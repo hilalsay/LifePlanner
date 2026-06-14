@@ -1,0 +1,321 @@
+const BASE = "/api/v1";
+
+let isRefreshing = false;
+
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    credentials: "include",
+    ...options,
+  });
+  if (res.status === 401 && !isRefreshing && !path.startsWith("/auth/")) {
+    isRefreshing = true;
+    try {
+      const refreshRes = await fetch(`${BASE}/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (refreshRes.ok) {
+        const retryRes = await fetch(`${BASE}${path}`, {
+          headers: { "Content-Type": "application/json", ...options?.headers },
+          credentials: "include",
+          ...options,
+        });
+        if (!retryRes.ok) throw new Error(await retryRes.text() || `HTTP ${retryRes.status}`);
+        if (retryRes.status === 204) return undefined as T;
+        return retryRes.json() as Promise<T>;
+      }
+    } finally {
+      isRefreshing = false;
+    }
+    window.location.href = "/login";
+    throw new Error("Session expired");
+  }
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || `HTTP ${res.status}`);
+  }
+  if (res.status === 204) return undefined as T;
+  return res.json() as Promise<T>;
+}
+
+// ── Planning ──────────────────────────────────────────────────────────────────
+
+export const planningApi = {
+  getLifeAreas: () => request<LifeArea[]>("/planning/life-areas"),
+  createLifeArea: (data: Partial<LifeArea>) =>
+    request<LifeArea>("/planning/life-areas", { method: "POST", body: JSON.stringify(data) }),
+  updateLifeArea: (id: string, data: Partial<LifeArea>) =>
+    request<LifeArea>(`/planning/life-areas/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteLifeArea: (id: string) =>
+    request<void>(`/planning/life-areas/${id}`, { method: "DELETE" }),
+
+  getYearlyGoals: (year?: number) =>
+    request<YearlyGoal[]>(`/planning/yearly-goals${year ? `?year=${year}` : ""}`),
+  createYearlyGoal: (data: Partial<YearlyGoal>) =>
+    request<YearlyGoal>("/planning/yearly-goals", { method: "POST", body: JSON.stringify(data) }),
+  updateYearlyGoal: (id: string, data: Partial<YearlyGoal>) =>
+    request<YearlyGoal>(`/planning/yearly-goals/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteYearlyGoal: (id: string) =>
+    request<void>(`/planning/yearly-goals/${id}`, { method: "DELETE" }),
+
+  getMonthlyFocuses: (year?: number, month?: number) => {
+    const params = new URLSearchParams();
+    if (year) params.set("year", String(year));
+    if (month) params.set("month", String(month));
+    return request<MonthlyFocus[]>(`/planning/monthly-focuses?${params}`);
+  },
+  createMonthlyFocus: (data: Partial<MonthlyFocus>) =>
+    request<MonthlyFocus>("/planning/monthly-focuses", { method: "POST", body: JSON.stringify(data) }),
+  updateMonthlyFocus: (id: string, data: Partial<MonthlyFocus>) =>
+    request<MonthlyFocus>(`/planning/monthly-focuses/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteMonthlyFocus: (id: string) =>
+    request<void>(`/planning/monthly-focuses/${id}`, { method: "DELETE" }),
+
+  getWeeklyPriorities: (year?: number, week?: number) => {
+    const params = new URLSearchParams();
+    if (year) params.set("year", String(year));
+    if (week) params.set("week_number", String(week));
+    return request<WeeklyPriority[]>(`/planning/weekly-priorities?${params}`);
+  },
+  createWeeklyPriority: (data: Partial<WeeklyPriority>) =>
+    request<WeeklyPriority>("/planning/weekly-priorities", { method: "POST", body: JSON.stringify(data) }),
+  updateWeeklyPriority: (id: string, data: Partial<WeeklyPriority>) =>
+    request<WeeklyPriority>(`/planning/weekly-priorities/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteWeeklyPriority: (id: string) =>
+    request<void>(`/planning/weekly-priorities/${id}`, { method: "DELETE" }),
+
+  getDailyTasks: (date?: string) =>
+    request<DailyTask[]>(`/planning/daily-tasks${date ? `?task_date=${date}` : ""}`),
+  createDailyTask: (data: Partial<DailyTask>) =>
+    request<DailyTask>("/planning/daily-tasks", { method: "POST", body: JSON.stringify(data) }),
+  updateDailyTask: (id: string, data: Partial<DailyTask>) =>
+    request<DailyTask>(`/planning/daily-tasks/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteDailyTask: (id: string) =>
+    request<void>(`/planning/daily-tasks/${id}`, { method: "DELETE" }),
+
+  getNotes: (type?: string, date?: string) => {
+    const params = new URLSearchParams();
+    if (type) params.set("note_type", type);
+    if (date) params.set("note_date", date);
+    return request<PlanningNote[]>(`/planning/notes?${params}`);
+  },
+  createNote: (data: Partial<PlanningNote>) =>
+    request<PlanningNote>("/planning/notes", { method: "POST", body: JSON.stringify(data) }),
+  deleteNote: (id: string) =>
+    request<void>(`/planning/notes/${id}`, { method: "DELETE" }),
+};
+
+// ── Habits ────────────────────────────────────────────────────────────────────
+
+export const habitsApi = {
+  getHabits: (activeOnly = true) =>
+    request<Habit[]>(`/habits?active_only=${activeOnly}`),
+  createHabit: (data: Partial<Habit>) =>
+    request<Habit>("/habits", { method: "POST", body: JSON.stringify(data) }),
+  updateHabit: (id: string, data: Partial<Habit>) =>
+    request<Habit>(`/habits/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteHabit: (id: string) =>
+    request<void>(`/habits/${id}`, { method: "DELETE" }),
+
+  getEntries: (habitId?: string, fromDate?: string, toDate?: string) => {
+    const params = new URLSearchParams();
+    if (habitId) params.set("habit_id", habitId);
+    if (fromDate) params.set("from_date", fromDate);
+    if (toDate) params.set("to_date", toDate);
+    return request<HabitEntry[]>(`/habits/entries?${params}`);
+  },
+  upsertEntry: (data: Partial<HabitEntry>) =>
+    request<HabitEntry>("/habits/entries", { method: "POST", body: JSON.stringify(data) }),
+
+  getStreak: (habitId: string) =>
+    request<{ current_streak: number; longest_streak: number }>(`/habits/${habitId}/streak`),
+};
+
+// ── Tracking ──────────────────────────────────────────────────────────────────
+
+export const trackingApi = {
+  getMood: (fromDate?: string, toDate?: string) => {
+    const params = new URLSearchParams();
+    if (fromDate) params.set("from_date", fromDate);
+    if (toDate) params.set("to_date", toDate);
+    return request<MoodEntry[]>(`/tracking/mood?${params}`);
+  },
+  createMood: (data: Partial<MoodEntry>) =>
+    request<MoodEntry>("/tracking/mood", { method: "POST", body: JSON.stringify(data) }),
+  updateMood: (id: string, data: Partial<MoodEntry>) =>
+    request<MoodEntry>(`/tracking/mood/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+
+  getHealth: (fromDate?: string, toDate?: string) => {
+    const params = new URLSearchParams();
+    if (fromDate) params.set("from_date", fromDate);
+    if (toDate) params.set("to_date", toDate);
+    return request<HealthEntry[]>(`/tracking/health?${params}`);
+  },
+  upsertHealth: (data: Partial<HealthEntry>) =>
+    request<HealthEntry>("/tracking/health", { method: "POST", body: JSON.stringify(data) }),
+  updateHealth: (id: string, data: Partial<HealthEntry>) =>
+    request<HealthEntry>(`/tracking/health/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+
+  getBooks: (status?: string) =>
+    request<BookEntry[]>(`/tracking/books${status ? `?status=${status}` : ""}`),
+  createBook: (data: Partial<BookEntry>) =>
+    request<BookEntry>("/tracking/books", { method: "POST", body: JSON.stringify(data) }),
+  updateBook: (id: string, data: Partial<BookEntry>) =>
+    request<BookEntry>(`/tracking/books/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteBook: (id: string) =>
+    request<void>(`/tracking/books/${id}`, { method: "DELETE" }),
+};
+
+// ── AI ────────────────────────────────────────────────────────────────────────
+
+export const aiApi = {
+  getMotivational: (useAI = true) =>
+    request<{ message: string; source: string }>(`/ai/motivational?ai=${useAI}`),
+  parseTask: (text: string) =>
+    request<Partial<DailyTask>>("/ai/parse-task", { method: "POST", body: JSON.stringify({ text }) }),
+  generateWeeklyReview: () =>
+    request<WeeklyAIReview>("/ai/weekly-review", { method: "POST", body: JSON.stringify({}) }),
+  getWeeklyReviews: () =>
+    request<WeeklyAIReview[]>("/ai/weekly-reviews"),
+};
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+export interface LifeArea {
+  id: string;
+  name: string;
+  description?: string;
+  color: string;
+  icon: string;
+  order_index: number;
+  created_at: string;
+}
+
+export interface YearlyGoal {
+  id: string;
+  life_area_id?: string;
+  year: number;
+  title: string;
+  description?: string;
+  status: string;
+  progress: number;
+  created_at: string;
+}
+
+export interface MonthlyFocus {
+  id: string;
+  yearly_goal_id?: string;
+  year: number;
+  month: number;
+  title: string;
+  description?: string;
+  reflection?: string;
+  created_at: string;
+}
+
+export interface WeeklyPriority {
+  id: string;
+  monthly_focus_id?: string;
+  year: number;
+  week_number: number;
+  title: string;
+  description?: string;
+  is_completed: boolean;
+  reflection?: string;
+  created_at: string;
+}
+
+export interface DailyTask {
+  id: string;
+  weekly_priority_id?: string;
+  task_date: string;
+  title: string;
+  description?: string;
+  is_completed: boolean;
+  priority: "low" | "medium" | "high";
+  estimated_minutes?: number;
+  actual_minutes?: number;
+  tags?: string;
+  created_at: string;
+}
+
+export interface PlanningNote {
+  id: string;
+  note_date?: string;
+  week_number?: number;
+  month?: number;
+  year?: number;
+  content: string;
+  note_type: string;
+  created_at: string;
+}
+
+export interface Habit {
+  id: string;
+  name: string;
+  description?: string;
+  frequency: string;
+  target_count: number;
+  color: string;
+  icon: string;
+  is_active: boolean;
+  order_index: number;
+  created_at: string;
+}
+
+export interface HabitEntry {
+  id: string;
+  habit_id: string;
+  entry_date: string;
+  completed: boolean;
+  count: number;
+  notes?: string;
+  created_at: string;
+}
+
+export interface MoodEntry {
+  id: string;
+  entry_date: string;
+  mood_score: number;
+  energy_score: number;
+  notes?: string;
+  tags?: string;
+  created_at: string;
+}
+
+export interface HealthEntry {
+  id: string;
+  entry_date: string;
+  sleep_hours?: number;
+  water_glasses?: number;
+  exercise_minutes?: number;
+  weight_kg?: number;
+  steps?: number;
+  notes?: string;
+  created_at: string;
+}
+
+export interface BookEntry {
+  id: string;
+  title: string;
+  author?: string;
+  status: string;
+  genre?: string;
+  total_pages?: number;
+  current_page?: number;
+  start_date?: string;
+  end_date?: string;
+  rating?: number;
+  notes?: string;
+  created_at: string;
+}
+
+export interface WeeklyAIReview {
+  id: string;
+  year: number;
+  week_number: number;
+  content: string;
+  model_used: string;
+  created_at: string;
+}
