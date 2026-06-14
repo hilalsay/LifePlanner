@@ -1,7 +1,7 @@
 import uuid
-from datetime import date
+from datetime import date, time
 from typing import Optional
-from sqlalchemy import String, Text, Integer, Boolean, Date, ForeignKey, Float
+from sqlalchemy import String, Text, Integer, Boolean, Date, Time, ForeignKey, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import BaseModel
 
@@ -44,6 +44,7 @@ class MonthlyFocus(BaseModel):
     title: Mapped[str] = mapped_column(String(200))
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     reflection: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    deadline_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
 
     yearly_goal: Mapped[Optional[YearlyGoal]] = relationship(back_populates="monthly_focuses")
     weekly_priorities: Mapped[list["WeeklyPriority"]] = relationship(back_populates="monthly_focus")
@@ -60,6 +61,7 @@ class WeeklyPriority(BaseModel):
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
     reflection: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    deadline_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
 
     monthly_focus: Mapped[Optional[MonthlyFocus]] = relationship(back_populates="weekly_priorities")
     daily_tasks: Mapped[list["DailyTask"]] = relationship(back_populates="weekly_priority")
@@ -78,6 +80,8 @@ class DailyTask(BaseModel):
     estimated_minutes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     actual_minutes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     tags: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)  # comma-separated
+    deadline_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    deadline_time: Mapped[Optional[time]] = mapped_column(Time, nullable=True)
 
     weekly_priority: Mapped[Optional[WeeklyPriority]] = relationship(back_populates="daily_tasks")
 

@@ -87,6 +87,8 @@ export const planningApi = {
 
   getDailyTasks: (date?: string) =>
     request<DailyTask[]>(`/planning/daily-tasks${date ? `?task_date=${date}` : ""}`),
+  getOverdueTasks: () =>
+    request<DailyTask[]>("/planning/daily-tasks?overdue=true"),
   createDailyTask: (data: Partial<DailyTask>) =>
     request<DailyTask>("/planning/daily-tasks", { method: "POST", body: JSON.stringify(data) }),
   updateDailyTask: (id: string, data: Partial<DailyTask>) =>
@@ -211,6 +213,7 @@ export interface MonthlyFocus {
   title: string;
   description?: string;
   reflection?: string;
+  deadline_date?: string;
   created_at: string;
 }
 
@@ -223,6 +226,7 @@ export interface WeeklyPriority {
   description?: string;
   is_completed: boolean;
   reflection?: string;
+  deadline_date?: string;
   created_at: string;
 }
 
@@ -237,6 +241,8 @@ export interface DailyTask {
   estimated_minutes?: number;
   actual_minutes?: number;
   tags?: string;
+  deadline_date?: string;   // "YYYY-MM-DD"
+  deadline_time?: string;   // "HH:MM:SS" from Postgres
   created_at: string;
 }
 

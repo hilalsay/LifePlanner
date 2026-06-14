@@ -55,7 +55,7 @@ def update_life_area(
     obj = db.query(LifeArea).filter(LifeArea.id == area_id, LifeArea.user_id == user_id).first()
     if not obj:
         raise HTTPException(404, "Not found")
-    for k, v in data.model_dump(exclude_none=True).items():
+    for k, v in data.model_dump(exclude_unset=True).items():
         setattr(obj, k, v)
     db.commit()
     db.refresh(obj)
@@ -112,7 +112,7 @@ def update_yearly_goal(
     obj = db.query(YearlyGoal).filter(YearlyGoal.id == goal_id, YearlyGoal.user_id == user_id).first()
     if not obj:
         raise HTTPException(404, "Not found")
-    for k, v in data.model_dump(exclude_none=True).items():
+    for k, v in data.model_dump(exclude_unset=True).items():
         setattr(obj, k, v)
     db.commit()
     db.refresh(obj)
@@ -172,7 +172,7 @@ def update_monthly_focus(
     obj = db.query(MonthlyFocus).filter(MonthlyFocus.id == focus_id, MonthlyFocus.user_id == user_id).first()
     if not obj:
         raise HTTPException(404, "Not found")
-    for k, v in data.model_dump(exclude_none=True).items():
+    for k, v in data.model_dump(exclude_unset=True).items():
         setattr(obj, k, v)
     db.commit()
     db.refresh(obj)
@@ -232,7 +232,7 @@ def update_weekly_priority(
     obj = db.query(WeeklyPriority).filter(WeeklyPriority.id == priority_id, WeeklyPriority.user_id == user_id).first()
     if not obj:
         raise HTTPException(404, "Not found")
-    for k, v in data.model_dump(exclude_none=True).items():
+    for k, v in data.model_dump(exclude_unset=True).items():
         setattr(obj, k, v)
     db.commit()
     db.refresh(obj)
@@ -257,13 +257,21 @@ def delete_weekly_priority(
 @router.get("/daily-tasks", response_model=list[DailyTaskOut])
 def list_daily_tasks(
     task_date: Optional[date] = Query(None),
+    overdue: bool = Query(False),
     db: Session = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):
+    from datetime import date as date_type
     q = db.query(DailyTask).filter(DailyTask.user_id == user_id, DailyTask.is_deleted == False)
-    if task_date:
+    if overdue:
+        q = q.filter(
+            DailyTask.deadline_date < date_type.today(),
+            DailyTask.is_completed == False,
+            DailyTask.deadline_date.isnot(None),
+        )
+    elif task_date:
         q = q.filter(DailyTask.task_date == task_date)
-    return q.order_by(DailyTask.created_at).all()
+    return q.order_by(DailyTask.deadline_date.asc().nullslast(), DailyTask.deadline_time.asc().nullslast(), DailyTask.created_at).all()
 
 
 @router.post("/daily-tasks", response_model=DailyTaskOut, status_code=201)
@@ -289,7 +297,7 @@ def update_daily_task(
     obj = db.query(DailyTask).filter(DailyTask.id == task_id, DailyTask.user_id == user_id).first()
     if not obj:
         raise HTTPException(404, "Not found")
-    for k, v in data.model_dump(exclude_none=True).items():
+    for k, v in data.model_dump(exclude_unset=True).items():
         setattr(obj, k, v)
     db.commit()
     db.refresh(obj)

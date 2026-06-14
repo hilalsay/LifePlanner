@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime
+from datetime import date, time, datetime
 from typing import Optional
 from pydantic import BaseModel
 
@@ -68,6 +68,7 @@ class MonthlyFocusCreate(BaseModel):
     month: int
     title: str
     description: Optional[str] = None
+    deadline_date: Optional[date] = None
 
 
 class MonthlyFocusUpdate(BaseModel):
@@ -75,6 +76,7 @@ class MonthlyFocusUpdate(BaseModel):
     description: Optional[str] = None
     reflection: Optional[str] = None
     yearly_goal_id: Optional[uuid.UUID] = None
+    deadline_date: Optional[date] = None
 
 
 class MonthlyFocusOut(BaseModel):
@@ -85,6 +87,7 @@ class MonthlyFocusOut(BaseModel):
     title: str
     description: Optional[str]
     reflection: Optional[str]
+    deadline_date: Optional[date]
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -96,6 +99,7 @@ class WeeklyPriorityCreate(BaseModel):
     week_number: int
     title: str
     description: Optional[str] = None
+    deadline_date: Optional[date] = None
 
 
 class WeeklyPriorityUpdate(BaseModel):
@@ -104,6 +108,7 @@ class WeeklyPriorityUpdate(BaseModel):
     is_completed: Optional[bool] = None
     reflection: Optional[str] = None
     monthly_focus_id: Optional[uuid.UUID] = None
+    deadline_date: Optional[date] = None
 
 
 class WeeklyPriorityOut(BaseModel):
@@ -115,6 +120,7 @@ class WeeklyPriorityOut(BaseModel):
     description: Optional[str]
     is_completed: bool
     reflection: Optional[str]
+    deadline_date: Optional[date]
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -128,6 +134,8 @@ class DailyTaskCreate(BaseModel):
     priority: str = "medium"
     estimated_minutes: Optional[int] = None
     tags: Optional[str] = None
+    deadline_date: Optional[date] = None
+    deadline_time: Optional[time] = None
 
 
 class DailyTaskUpdate(BaseModel):
@@ -139,6 +147,8 @@ class DailyTaskUpdate(BaseModel):
     actual_minutes: Optional[int] = None
     tags: Optional[str] = None
     weekly_priority_id: Optional[uuid.UUID] = None
+    deadline_date: Optional[date] = None
+    deadline_time: Optional[time] = None
 
 
 class DailyTaskOut(BaseModel):
@@ -152,6 +162,8 @@ class DailyTaskOut(BaseModel):
     estimated_minutes: Optional[int]
     actual_minutes: Optional[int]
     tags: Optional[str]
+    deadline_date: Optional[date]
+    deadline_time: Optional[time]
     created_at: datetime
 
     model_config = {"from_attributes": True}
