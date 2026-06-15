@@ -202,6 +202,7 @@ export interface YearlyGoal {
   description?: string;
   status: string;
   progress: number;
+  deadline_date?: string;
   created_at: string;
 }
 

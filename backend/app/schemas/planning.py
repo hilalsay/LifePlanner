@@ -39,6 +39,7 @@ class YearlyGoalCreate(BaseModel):
     description: Optional[str] = None
     status: str = "active"
     progress: float = 0.0
+    deadline_date: Optional[date] = None
 
 
 class YearlyGoalUpdate(BaseModel):
@@ -47,6 +48,7 @@ class YearlyGoalUpdate(BaseModel):
     status: Optional[str] = None
     progress: Optional[float] = None
     life_area_id: Optional[uuid.UUID] = None
+    deadline_date: Optional[date] = None
 
 
 class YearlyGoalOut(BaseModel):
@@ -57,6 +59,7 @@ class YearlyGoalOut(BaseModel):
     description: Optional[str]
     status: str
     progress: float
+    deadline_date: Optional[date]
     created_at: datetime
 
     model_config = {"from_attributes": True}

@@ -30,6 +30,8 @@ class YearlyGoal(BaseModel):
     status: Mapped[str] = mapped_column(String(20), default="active")  # active, completed, abandoned
     progress: Mapped[float] = mapped_column(Float, default=0.0)
 
+    deadline_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+
     life_area: Mapped[Optional[LifeArea]] = relationship(back_populates="yearly_goals")
     monthly_focuses: Mapped[list["MonthlyFocus"]] = relationship(back_populates="yearly_goal")
 
