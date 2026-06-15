@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKEND_DIR="$SCRIPT_DIR/backend"
-FRONTEND_DIR="$SCRIPT_DIR/frontend"
+PROJECT_DIR="/home/hilal/my-projects/LifePlanner"
+BACKEND_DIR="$PROJECT_DIR/backend"
+FRONTEND_DIR="$PROJECT_DIR/frontend"
 VENV="$BACKEND_DIR/venv"
-LOG_DIR="$SCRIPT_DIR/.logs"
+LOG_DIR="$PROJECT_DIR/.logs"
 
 mkdir -p "$LOG_DIR"
 
@@ -45,10 +45,8 @@ cleanup() {
     fi
   done
 
-  # Give processes a moment to exit gracefully
   sleep 1
 
-  # Force kill anything still running
   for name in "${!PROC_PIDS[@]}"; do
     local pid="${PROC_PIDS[$name]}"
     if kill -0 "$pid" 2>/dev/null; then
@@ -57,13 +55,9 @@ cleanup() {
     fi
   done
 
-  # Wait for all background jobs
   for name in "${!PROC_PIDS[@]}"; do
     wait "${PROC_PIDS[$name]}" 2>/dev/null || true
   done
-
-  info "Stopping postgres..."
-  docker compose -f "$SCRIPT_DIR/docker-compose.yml" stop postgres 2>/dev/null || true
 
   log "All services stopped. Logs are in $LOG_DIR/"
 }
@@ -94,10 +88,10 @@ check_command() {
 # --- preflight checks ---
 echo -e "\n${BOLD}Life Planner — Starting up${NC}\n"
 
-check_command docker   "Install Docker: https://docs.docker.com/get-docker/"
-check_command node     "Install Node.js: https://nodejs.org/"
-check_command npm      "Install Node.js (includes npm): https://nodejs.org/"
-check_command python3  "Install Python 3.12+"
+check_command node    "Install Node.js: https://nodejs.org/"
+check_command npm     "Install Node.js (includes npm): https://nodejs.org/"
+check_command python3 "Install Python 3.12+"
+check_command psql    "Install PostgreSQL: sudo apt install postgresql"
 
 if ! python3 -c "import venv" 2>/dev/null; then
   die "python3-venv is not installed. Run: sudo apt install python3.12-venv"
@@ -117,7 +111,7 @@ if [[ ! -f "$VENV/bin/uvicorn" ]] || [[ "$BACKEND_DIR/requirements.txt" -nt "$VE
   "$VENV/bin/pip" install --upgrade pip -q
   "$VENV/bin/pip" install -r "$BACKEND_DIR/requirements.txt" -q \
     && touch "$VENV/.installed" \
-    || die "pip install failed. Check $LOG_DIR/pip.log"
+    || die "pip install failed."
   log "Python dependencies ready."
 fi
 
@@ -130,19 +124,21 @@ if [[ ! -d "$FRONTEND_DIR/node_modules" ]] || [[ "$FRONTEND_DIR/package.json" -n
 fi
 
 # ── Step 3: Postgres ─────────────────────────────────────────────────────────
-info "Starting postgres..."
-docker compose -f "$SCRIPT_DIR/docker-compose.yml" up -d postgres \
-  || die "Failed to start postgres."
+info "Checking PostgreSQL..."
+if ! pg_isready -h localhost -p 5432 -q 2>/dev/null; then
+  info "PostgreSQL is not running — starting it..."
+  sudo systemctl start postgresql \
+    || die "Could not start PostgreSQL. Run manually: sudo systemctl start postgresql"
+  sleep 2
+fi
 
-for i in $(seq 1 30); do
-  if docker compose -f "$SCRIPT_DIR/docker-compose.yml" exec -T postgres \
-      pg_isready -U lifeplanner -d life_planner &>/dev/null; then
-    log "Postgres is ready."
-    break
-  fi
-  [[ $i -eq 30 ]] && die "Postgres did not become ready in time."
-  sleep 1
-done
+# Create DB user and database if they don't exist yet
+if ! psql -h localhost -U lifeplanner -d life_planner -c "" &>/dev/null; then
+  info "Setting up database user and schema..."
+  sudo -u postgres psql -c "CREATE USER lifeplanner WITH PASSWORD 'lifeplanner123';" 2>/dev/null || true
+  sudo -u postgres psql -c "CREATE DATABASE life_planner OWNER lifeplanner;" 2>/dev/null || true
+fi
+log "PostgreSQL is ready."
 
 # ── Step 4: Alembic migrations ───────────────────────────────────────────────
 info "Running database migrations..."
@@ -171,7 +167,7 @@ wait_for_port "backend" 127.0.0.1 8000 20 || {
 FRONTEND_LOG="$LOG_DIR/frontend.log"
 info "Starting frontend → $FRONTEND_LOG"
 
-(cd "$FRONTEND_DIR" && npm run dev -- --host 2>/dev/null || npm run dev) \
+(cd "$FRONTEND_DIR" && npm run dev) \
   >"$FRONTEND_LOG" 2>&1 &
 
 register_proc "frontend" $! "$FRONTEND_LOG"
