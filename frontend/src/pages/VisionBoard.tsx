@@ -4,12 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { GoalDetailPanel } from "@/components/GoalDetailPanel";
+import { AreaCard, AREA_COLORS } from "@/components/AreaCard";
 import { planningApi, type LifeArea, type YearlyGoal } from "@/lib/api";
-
-const AREA_COLORS = [
-  "#6366f1", "#ec4899", "#f59e0b", "#10b981",
-  "#3b82f6", "#8b5cf6", "#ef4444", "#14b8a6",
-];
 
 export function VisionBoard() {
   const [areas, setAreas] = useState<LifeArea[]>([]);
@@ -17,12 +13,9 @@ export function VisionBoard() {
   const [newAreaName, setNewAreaName] = useState("");
   const [selectedArea, setSelectedArea] = useState<string | null>(null);
   const [newGoalTitle, setNewGoalTitle] = useState("");
-  const [editingAreaId, setEditingAreaId] = useState<string | null>(null);
-  const [editingAreaValue, setEditingAreaValue] = useState("");
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
   const [editingGoalValue, setEditingGoalValue] = useState("");
   const [detailGoal, setDetailGoal] = useState<YearlyGoal | null>(null);
-  const areaEditRef = useRef<HTMLInputElement>(null);
   const goalEditRef = useRef<HTMLInputElement>(null);
 
   const year = new Date().getFullYear();
@@ -38,10 +31,6 @@ export function VisionBoard() {
   }, []);
 
   useEffect(() => {
-    if (editingAreaId) areaEditRef.current?.focus();
-  }, [editingAreaId]);
-
-  useEffect(() => {
     if (editingGoalId) goalEditRef.current?.focus();
   }, [editingGoalId]);
 
@@ -53,11 +42,9 @@ export function VisionBoard() {
     setNewAreaName("");
   };
 
-  const saveAreaEdit = async (id: string) => {
-    if (!editingAreaValue.trim()) { setEditingAreaId(null); return; }
-    const updated = await planningApi.updateLifeArea(id, { name: editingAreaValue.trim() });
+  const updateArea = async (id: string, data: Partial<LifeArea>) => {
+    const updated = await planningApi.updateLifeArea(id, data);
     setAreas((as) => as.map((a) => (a.id === id ? updated : a)));
-    setEditingAreaId(null);
   };
 
   const deleteArea = async (id: string) => {
@@ -95,7 +82,18 @@ export function VisionBoard() {
   };
 
   const areaGoals = (areaId: string) => goals.filter((g) => g.life_area_id === areaId);
-  const visibleGoals = selectedArea ? areaGoals(selectedArea) : goals;
+
+  // Active areas first, then inactive (stable within each group)
+  const sortedAreas = [...areas].sort((a, b) => Number(b.is_active) - Number(a.is_active));
+
+  // Set of inactive area ids — their goals are hidden from the "All Goals" list
+  const inactiveAreaIds = new Set(areas.filter((a) => !a.is_active).map((a) => a.id));
+
+  const visibleGoals = selectedArea
+    ? areaGoals(selectedArea)
+    : goals.filter((g) => !g.life_area_id || !inactiveAreaIds.has(g.life_area_id));
+
+  const selectedAreaName = areas.find((a) => a.id === selectedArea)?.name;
 
   return (
     <>
@@ -106,85 +104,16 @@ export function VisionBoard() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {areas.map((area) => (
-            <Card
+          {sortedAreas.map((area) => (
+            <AreaCard
               key={area.id}
-              className={`group transition-shadow hover:shadow-md ${
-                selectedArea === area.id ? "ring-2 ring-primary" : ""
-              }`}
-            >
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <div
-                    className="h-3 w-3 shrink-0 rounded-full cursor-pointer"
-                    style={{ backgroundColor: area.color }}
-                    onClick={() => setSelectedArea(selectedArea === area.id ? null : area.id)}
-                  />
-                  {editingAreaId === area.id ? (
-                    <div className="flex flex-1 items-center gap-1">
-                      <input
-                        ref={areaEditRef}
-                        type="text"
-                        value={editingAreaValue}
-                        onChange={(e) => setEditingAreaValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") saveAreaEdit(area.id);
-                          if (e.key === "Escape") setEditingAreaId(null);
-                        }}
-                        className="flex-1 rounded border bg-background px-2 py-0.5 text-sm font-semibold outline-none focus:ring-2 focus:ring-ring"
-                      />
-                      <button onClick={() => saveAreaEdit(area.id)} className="text-primary hover:opacity-70">
-                        <Check className="h-3.5 w-3.5" />
-                      </button>
-                      <button onClick={() => setEditingAreaId(null)} className="text-muted-foreground hover:opacity-70">
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <CardTitle
-                        className="flex-1 cursor-pointer text-sm"
-                        onClick={() => setSelectedArea(selectedArea === area.id ? null : area.id)}
-                      >
-                        {area.name}
-                      </CardTitle>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setEditingAreaId(area.id); setEditingAreaValue(area.name); }}
-                          className="text-muted-foreground hover:text-foreground"
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); deleteArea(area.id); }}
-                          className="text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent
-                className="cursor-pointer space-y-1"
-                onClick={() => editingAreaId !== area.id && setSelectedArea(selectedArea === area.id ? null : area.id)}
-              >
-                {areaGoals(area.id).length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No goals yet</p>
-                ) : (
-                  areaGoals(area.id).map((g) => (
-                    <div key={g.id} className="flex items-center gap-2">
-                      <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground" />
-                      <p className="flex-1 text-xs truncate">{g.title}</p>
-                      {g.progress > 0 && (
-                        <span className="text-xs text-muted-foreground shrink-0">{Math.round(g.progress)}%</span>
-                      )}
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
+              area={area}
+              goals={areaGoals(area.id)}
+              selected={selectedArea === area.id}
+              onSelect={() => setSelectedArea(selectedArea === area.id ? null : area.id)}
+              onUpdate={(data) => updateArea(area.id, data)}
+              onDelete={() => deleteArea(area.id)}
+            />
           ))}
 
           <Card className="border-dashed">
@@ -210,9 +139,7 @@ export function VisionBoard() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">
-                {selectedArea
-                  ? `Goals — ${areas.find((a) => a.id === selectedArea)?.name}`
-                  : `All Goals — ${year}`}
+                {selectedArea ? `Goals — ${selectedAreaName}` : `All Goals — ${year}`}
               </CardTitle>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">
@@ -262,7 +189,6 @@ export function VisionBoard() {
                     </div>
                   ) : (
                     <>
-                      {/* title + sub-info */}
                       <div className="flex-1 min-w-0">
                         <span className="text-sm">{g.title}</span>
                         {g.description && (
@@ -278,7 +204,6 @@ export function VisionBoard() {
                         )}
                       </div>
 
-                      {/* actions */}
                       <div className="flex items-center gap-1 shrink-0">
                         {g.progress > 0 && (
                           <span className="text-xs text-muted-foreground tabular-nums">
@@ -322,7 +247,7 @@ export function VisionBoard() {
                 value={newGoalTitle}
                 onChange={(e) => setNewGoalTitle(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addGoal()}
-                placeholder={selectedArea ? `Add goal to ${areas.find((a) => a.id === selectedArea)?.name}...` : "Add a goal..."}
+                placeholder={selectedArea ? `Add goal to ${selectedAreaName}...` : "Add a goal..."}
                 className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
               <Button size="sm" onClick={addGoal}>

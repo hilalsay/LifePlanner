@@ -191,6 +191,7 @@ export interface LifeArea {
   color: string;
   icon: string;
   order_index: number;
+  is_active: boolean;
   created_at: string;
 }
 

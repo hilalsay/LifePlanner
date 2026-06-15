@@ -1,0 +1,101 @@
+INFO:     Will watch for changes in these directories: ['/home/hilal/my-projects/LifePlanner/.claude/worktrees/valiant-crunching-pony/backend']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [40662] using WatchFiles
+INFO:     Started server process [40669]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:60006 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:60022 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:60036 - "POST /api/v1/auth/refresh HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:60040 - "POST /api/v1/auth/refresh HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:44586 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:44590 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:44596 - "POST /api/v1/auth/refresh HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44602 - "POST /api/v1/auth/refresh HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44626 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44616 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44640 - "GET /api/v1/ai/motivational?ai=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44652 - "GET /api/v1/ai/motivational?ai=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44648 - "GET /api/v1/planning/daily-tasks?task_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44662 - "GET /api/v1/planning/daily-tasks?task_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44686 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44678 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44696 - "GET /api/v1/ai/motivational?ai=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44708 - "GET /api/v1/ai/motivational?ai=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44706 - "GET /api/v1/planning/daily-tasks?task_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44716 - "GET /api/v1/planning/daily-tasks?task_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44726 - "GET /api/v1/planning/yearly-goals?year=2026 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44742 - "GET /api/v1/planning/yearly-goals?year=2026 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44758 - "GET /api/v1/habits?active_only=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44750 - "GET /api/v1/habits/entries?from_date=2026-06-10&to_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44764 - "GET /api/v1/habits?active_only=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44770 - "GET /api/v1/habits/entries?from_date=2026-06-10&to_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44782 - "GET /api/v1/tracking/books HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44784 - "GET /api/v1/tracking/health?from_date=2026-06-16&to_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44802 - "GET /api/v1/tracking/books HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44816 - "GET /api/v1/tracking/health?from_date=2026-06-16&to_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44792 - "GET /api/v1/tracking/mood?from_date=2026-05-17&to_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44830 - "GET /api/v1/tracking/mood?from_date=2026-05-17&to_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34190 - "GET /api/v1/planning/daily-tasks?task_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34180 - "GET /api/v1/tracking/mood?from_date=2026-06-01&to_date=2026-06-30 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34198 - "GET /api/v1/tracking/health?from_date=2026-06-16&to_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34226 - "GET /api/v1/planning/daily-tasks?task_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34240 - "GET /api/v1/tracking/mood?from_date=2026-06-01&to_date=2026-06-30 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34232 - "GET /api/v1/tracking/health?from_date=2026-06-16&to_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34210 - "GET /api/v1/tracking/mood?from_date=2026-06-16&to_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34248 - "GET /api/v1/tracking/mood?from_date=2026-06-16&to_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34278 - "GET /api/v1/tracking/mood?from_date=2026-05-17&to_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34262 - "GET /api/v1/tracking/books HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34286 - "GET /api/v1/tracking/health?from_date=2026-06-16&to_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34300 - "GET /api/v1/tracking/mood?from_date=2026-05-17&to_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34318 - "GET /api/v1/tracking/health?from_date=2026-06-16&to_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34312 - "GET /api/v1/tracking/books HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34330 - "GET /api/v1/habits/entries?from_date=2026-06-10&to_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34332 - "GET /api/v1/habits?active_only=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34340 - "GET /api/v1/habits/entries?from_date=2026-06-10&to_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34342 - "GET /api/v1/habits?active_only=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34348 - "GET /api/v1/planning/yearly-goals?year=2026 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34350 - "GET /api/v1/planning/life-areas HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34360 - "GET /api/v1/planning/yearly-goals?year=2026 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34370 - "GET /api/v1/planning/life-areas HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34374 - "GET /api/v1/planning/yearly-goals?year=2026 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34386 - "GET /api/v1/planning/yearly-goals?year=2026 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34388 - "GET /api/v1/planning/monthly-focuses?year=2026&month=6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34398 - "GET /api/v1/planning/monthly-focuses?year=2026&month=6 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34408 - "GET /api/v1/ai/motivational?ai=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34428 - "GET /api/v1/ai/motivational?ai=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34414 - "GET /api/v1/planning/daily-tasks?task_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34432 - "GET /api/v1/planning/daily-tasks?task_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34440 - "GET /api/v1/planning/weekly-priorities?year=2026&week_number=25 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34456 - "GET /api/v1/planning/weekly-priorities?year=2026&week_number=25 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32834 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:32842 - "GET /api/v1/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:32856 - "POST /api/v1/auth/refresh HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32858 - "POST /api/v1/auth/refresh HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32866 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32878 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32888 - "GET /api/v1/ai/motivational?ai=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32912 - "GET /api/v1/ai/motivational?ai=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32902 - "GET /api/v1/planning/daily-tasks?task_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32922 - "GET /api/v1/planning/daily-tasks?task_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32928 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32934 - "GET /api/v1/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32936 - "GET /api/v1/ai/motivational?ai=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32958 - "GET /api/v1/ai/motivational?ai=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32942 - "GET /api/v1/planning/daily-tasks?task_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:32964 - "GET /api/v1/planning/daily-tasks?task_date=2026-06-16 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44884 - "GET /api/v1/planning/life-areas HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44892 - "GET /api/v1/planning/yearly-goals?year=2026 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44920 - "GET /api/v1/planning/yearly-goals?year=2026 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44904 - "GET /api/v1/planning/life-areas HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44936 - "GET /api/v1/planning/monthly-focuses?year=2026 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44940 - "GET /api/v1/planning/monthly-focuses?year=2026 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33818 - "PATCH /api/v1/planning/yearly-goals/fc4adab8-4a3e-4b28-b6a9-a7eaa925e579 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33830 - "PATCH /api/v1/planning/yearly-goals/fc4adab8-4a3e-4b28-b6a9-a7eaa925e579 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50996 - "GET /api/v1/planning/monthly-focuses?year=2026 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51010 - "GET /api/v1/planning/monthly-focuses?year=2026 HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [40669]
+INFO:     Stopping reloader process [40662]

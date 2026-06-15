@@ -10,6 +10,7 @@ class LifeAreaCreate(BaseModel):
     color: str = "#6366f1"
     icon: str = "star"
     order_index: int = 0
+    is_active: bool = True
 
 
 class LifeAreaUpdate(BaseModel):
@@ -18,6 +19,7 @@ class LifeAreaUpdate(BaseModel):
     color: Optional[str] = None
     icon: Optional[str] = None
     order_index: Optional[int] = None
+    is_active: Optional[bool] = None
 
 
 class LifeAreaOut(BaseModel):
@@ -27,6 +29,7 @@ class LifeAreaOut(BaseModel):
     color: str
     icon: str
     order_index: int
+    is_active: bool
     created_at: datetime
 
     model_config = {"from_attributes": True}

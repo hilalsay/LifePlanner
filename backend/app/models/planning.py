@@ -15,6 +15,7 @@ class LifeArea(BaseModel):
     color: Mapped[str] = mapped_column(String(20), default="#6366f1")
     icon: Mapped[str] = mapped_column(String(50), default="star")
     order_index: Mapped[int] = mapped_column(Integer, default=0)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     yearly_goals: Mapped[list["YearlyGoal"]] = relationship(back_populates="life_area")
 
