@@ -26,3 +26,6 @@ dist/
 .DS_Store
 Thumbs.db
 .logs/
+
+# Claude
+.claude/settings.local.json
