@@ -81,36 +81,25 @@ wait_for_port() {
   return 1
 }
 
-check_command() {
-  command -v "$1" &>/dev/null || die "'$1' not found. $2"
-}
-
-# --- preflight checks ---
+# --- preflight ---
 echo -e "\n${BOLD}Life Planner — Starting up${NC}\n"
 
-[[ -f "$VENV/bin/uvicorn" ]] || die "Backend venv not set up. Run once:\n  sudo apt install python3.12-venv\n  python3 -m venv $VENV && $VENV/bin/pip install -r $BACKEND_DIR/requirements.txt"
-[[ -d "$FRONTEND_DIR/node_modules" ]] || die "Frontend deps missing. Run once:\n  npm install --prefix $FRONTEND_DIR"
+[[ -f "$VENV/bin/uvicorn" ]]      || { echo -e "${RED}[✗]${NC} Not set up. Run: ./setup.sh" >&2; exit 1; }
+[[ -d "$FRONTEND_DIR/node_modules" ]] || { echo -e "${RED}[✗]${NC} Not set up. Run: ./setup.sh" >&2; exit 1; }
 
 # --- local IP ---
 LOCAL_IP=$(ip addr show | awk '/inet / && !/127\.0\.0\.1/ {sub(/\/.*/, "", $2); print $2; exit}')
 
 # ── Postgres ─────────────────────────────────────────────────────────────────
-info "Checking PostgreSQL..."
 if ! pg_isready -h localhost -p 5432 -q 2>/dev/null; then
   info "Starting PostgreSQL..."
-  sudo systemctl start postgresql || die "Could not start PostgreSQL."
+  sudo systemctl start postgresql || { echo -e "${RED}[✗]${NC} PostgreSQL failed to start." >&2; exit 1; }
   sleep 2
-fi
-if ! psql -h localhost -U lifeplanner -d life_planner -c "" &>/dev/null; then
-  info "Creating database user and schema..."
-  sudo -u postgres psql -c "CREATE USER lifeplanner WITH PASSWORD 'lifeplanner123';" 2>/dev/null || true
-  sudo -u postgres psql -c "CREATE DATABASE life_planner OWNER lifeplanner;" 2>/dev/null || true
 fi
 log "PostgreSQL is ready."
 
-# ── Migrations ────────────────────────────────────────────────────────────────
-info "Running migrations..."
-(cd "$BACKEND_DIR" && "$VENV/bin/alembic" upgrade head) || die "Alembic migration failed."
+# ── Migrations (picks up new ones after a git pull) ───────────────────────────
+(cd "$BACKEND_DIR" && "$VENV/bin/alembic" upgrade head -q) || { echo -e "${RED}[✗]${NC} Migration failed." >&2; exit 1; }
 log "Database schema up to date."
 
 # ── Backend ───────────────────────────────────────────────────────────────────
