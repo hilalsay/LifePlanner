@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Clock, X } from "lucide-react";
+import { Plus, Clock, X, ChevronRight } from "lucide-react";
 import {
   format, getDaysInMonth, startOfMonth, getDay,
   addMonths, subMonths, differenceInCalendarDays, parseISO,
@@ -7,6 +7,7 @@ import {
 } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MonthlyFocusDetail } from "@/components/MonthlyFocusDetail";
 import { planningApi, type MonthlyFocus } from "@/lib/api";
 import { toDateString } from "@/lib/utils";
 
@@ -33,6 +34,7 @@ export function MonthView() {
   const [newDeadline, setNewDeadline]   = useState("");
   const [dlPickerId, setDlPickerId]     = useState<string | null>(null);
   const [dlPickerDate, setDlPickerDate] = useState("");
+  const [expandedId, setExpandedId]     = useState<string | null>(null);
 
   const year     = month.getFullYear();
   const monthNum = month.getMonth() + 1;
@@ -79,6 +81,17 @@ export function MonthView() {
     } as Parameters<typeof planningApi.updateMonthlyFocus>[1]);
     setFocuses((fs) => fs.map((f) => (f.id === id ? updated : f)));
     setDlPickerId(null);
+  };
+
+  const updateFocus = async (id: string, data: Partial<MonthlyFocus>) => {
+    const updated = await planningApi.updateMonthlyFocus(id, data);
+    setFocuses((fs) => fs.map((f) => (f.id === id ? updated : f)));
+  };
+
+  const deleteFocus = async (id: string) => {
+    await planningApi.deleteMonthlyFocus(id);
+    setFocuses((fs) => fs.filter((f) => f.id !== id));
+    if (expandedId === id) setExpandedId(null);
   };
 
   function DatePicker({ value, onChange, onClear }: { value: string; onChange: (d: string) => void; onClear: () => void }) {
@@ -178,9 +191,21 @@ export function MonthView() {
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 min-w-0">
+                  <button
+                    onClick={() => setExpandedId(expandedId === f.id ? null : f.id)}
+                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                    title={expandedId === f.id ? "Collapse" : "Expand"}
+                  >
+                    <ChevronRight className={`h-4 w-4 transition-transform ${expandedId === f.id ? "rotate-90" : ""}`} />
+                  </button>
+                  <div
+                    className="flex-1 min-w-0 cursor-pointer"
+                    onClick={() => setExpandedId(expandedId === f.id ? null : f.id)}
+                  >
                     <p className="text-sm font-medium">{f.title}</p>
-                    {f.description && <p className="mt-0.5 text-xs text-muted-foreground">{f.description}</p>}
+                    {f.description && expandedId !== f.id && (
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">{f.description}</p>
+                    )}
                   </div>
 
                   {/* Deadline badge */}
@@ -229,6 +254,15 @@ export function MonthView() {
                       </button>
                     </div>
                   </div>
+                )}
+
+                {/* Expanded detail: editable plan + linked weekly tasks */}
+                {expandedId === f.id && (
+                  <MonthlyFocusDetail
+                    focus={f}
+                    onUpdate={(data) => updateFocus(f.id, data)}
+                    onDelete={() => deleteFocus(f.id)}
+                  />
                 )}
               </div>
             );
