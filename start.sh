@@ -88,94 +88,45 @@ check_command() {
 # --- preflight checks ---
 echo -e "\n${BOLD}Life Planner — Starting up${NC}\n"
 
-check_command node    "Install Node.js: https://nodejs.org/"
-check_command npm     "Install Node.js (includes npm): https://nodejs.org/"
-check_command python3 "Install Python 3.12+"
-check_command psql    "Install PostgreSQL: sudo apt install postgresql"
+[[ -f "$VENV/bin/uvicorn" ]] || die "Backend venv not set up. Run once:\n  sudo apt install python3.12-venv\n  python3 -m venv $VENV && $VENV/bin/pip install -r $BACKEND_DIR/requirements.txt"
+[[ -d "$FRONTEND_DIR/node_modules" ]] || die "Frontend deps missing. Run once:\n  npm install --prefix $FRONTEND_DIR"
 
-if ! python3 -c "import venv" 2>/dev/null; then
-  die "python3-venv is not installed. Run: sudo apt install python3.12-venv"
-fi
-
-# --- local IP for display ---
+# --- local IP ---
 LOCAL_IP=$(ip addr show | awk '/inet / && !/127\.0\.0\.1/ {sub(/\/.*/, "", $2); print $2; exit}')
 
-# ── Step 1: Python venv ──────────────────────────────────────────────────────
-if [[ ! -d "$VENV" ]]; then
-  info "Creating Python virtual environment..."
-  python3 -m venv "$VENV" || die "Failed to create venv."
-fi
-
-if [[ ! -f "$VENV/bin/uvicorn" ]] || [[ "$BACKEND_DIR/requirements.txt" -nt "$VENV/.installed" ]]; then
-  info "Installing Python dependencies..."
-  "$VENV/bin/pip" install --upgrade pip -q
-  "$VENV/bin/pip" install -r "$BACKEND_DIR/requirements.txt" -q \
-    && touch "$VENV/.installed" \
-    || die "pip install failed."
-  log "Python dependencies ready."
-fi
-
-# ── Step 2: Frontend dependencies ───────────────────────────────────────────
-if [[ ! -d "$FRONTEND_DIR/node_modules" ]] || [[ "$FRONTEND_DIR/package.json" -nt "$FRONTEND_DIR/node_modules/.package-lock.json" ]]; then
-  info "Installing frontend dependencies (npm install)..."
-  npm install --prefix "$FRONTEND_DIR" --silent \
-    || die "npm install failed."
-  log "Frontend dependencies ready."
-fi
-
-# ── Step 3: Postgres ─────────────────────────────────────────────────────────
+# ── Postgres ─────────────────────────────────────────────────────────────────
 info "Checking PostgreSQL..."
 if ! pg_isready -h localhost -p 5432 -q 2>/dev/null; then
-  info "PostgreSQL is not running — starting it..."
-  sudo systemctl start postgresql \
-    || die "Could not start PostgreSQL. Run manually: sudo systemctl start postgresql"
+  info "Starting PostgreSQL..."
+  sudo systemctl start postgresql || die "Could not start PostgreSQL."
   sleep 2
 fi
-
-# Create DB user and database if they don't exist yet
 if ! psql -h localhost -U lifeplanner -d life_planner -c "" &>/dev/null; then
-  info "Setting up database user and schema..."
+  info "Creating database user and schema..."
   sudo -u postgres psql -c "CREATE USER lifeplanner WITH PASSWORD 'lifeplanner123';" 2>/dev/null || true
   sudo -u postgres psql -c "CREATE DATABASE life_planner OWNER lifeplanner;" 2>/dev/null || true
 fi
 log "PostgreSQL is ready."
 
-# ── Step 4: Alembic migrations ───────────────────────────────────────────────
-info "Running database migrations..."
-(cd "$BACKEND_DIR" && "$VENV/bin/alembic" upgrade head) \
-  || die "Alembic migration failed."
+# ── Migrations ────────────────────────────────────────────────────────────────
+info "Running migrations..."
+(cd "$BACKEND_DIR" && "$VENV/bin/alembic" upgrade head) || die "Alembic migration failed."
 log "Database schema up to date."
 
-# ── Step 5: Backend ──────────────────────────────────────────────────────────
+# ── Backend ───────────────────────────────────────────────────────────────────
 BACKEND_LOG="$LOG_DIR/backend.log"
 info "Starting backend → $BACKEND_LOG"
-
-(cd "$BACKEND_DIR" && \
-  "$VENV/bin/uvicorn" app.main:app \
-    --host 0.0.0.0 --port 8000 \
-    --reload \
-) >"$BACKEND_LOG" 2>&1 &
-
+(cd "$BACKEND_DIR" && "$VENV/bin/uvicorn" app.main:app --host 0.0.0.0 --port 8000 --reload) \
+  >"$BACKEND_LOG" 2>&1 &
 register_proc "backend" $! "$BACKEND_LOG"
-wait_for_port "backend" 127.0.0.1 8000 20 || {
-  err "Backend failed to start. Last log lines:"
-  tail -20 "$BACKEND_LOG" >&2
-  exit 1
-}
+wait_for_port "backend" 127.0.0.1 8000 20 || { tail -20 "$BACKEND_LOG" >&2; exit 1; }
 
-# ── Step 6: Frontend ─────────────────────────────────────────────────────────
+# ── Frontend ──────────────────────────────────────────────────────────────────
 FRONTEND_LOG="$LOG_DIR/frontend.log"
 info "Starting frontend → $FRONTEND_LOG"
-
-(cd "$FRONTEND_DIR" && npm run dev) \
-  >"$FRONTEND_LOG" 2>&1 &
-
+(cd "$FRONTEND_DIR" && npm run dev) >"$FRONTEND_LOG" 2>&1 &
 register_proc "frontend" $! "$FRONTEND_LOG"
-wait_for_port "frontend" 127.0.0.1 5173 20 || {
-  err "Frontend failed to start. Last log lines:"
-  tail -20 "$FRONTEND_LOG" >&2
-  exit 1
-}
+wait_for_port "frontend" 127.0.0.1 5173 20 || { tail -20 "$FRONTEND_LOG" >&2; exit 1; }
 
 # ── Ready ─────────────────────────────────────────────────────────────────────
 echo
@@ -191,8 +142,8 @@ while true; do
   for name in "${!PROC_PIDS[@]}"; do
     pid="${PROC_PIDS[$name]}"
     if ! kill -0 "$pid" 2>/dev/null; then
-      err "$name (PID $pid) has exited unexpectedly."
-      err "Last lines from $name log:"
+      err "$name crashed. Last log lines:"
+      err ""
       tail -20 "${PROC_LOGS[$name]}" >&2
       exit 1
     fi
