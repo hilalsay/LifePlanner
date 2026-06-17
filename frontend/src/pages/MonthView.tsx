@@ -1,32 +1,42 @@
 import { useState, useEffect } from "react";
 import { Plus, Clock, X, ChevronRight } from "lucide-react";
 import {
-  format, getDaysInMonth, startOfMonth, getDay,
+  format, getDaysInMonth, startOfMonth, getDay, startOfWeek, addDays,
   addMonths, subMonths, differenceInCalendarDays, parseISO,
-  lastDayOfMonth, setDate,
+  lastDayOfMonth, setDate, type Locale,
 } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MonthlyFocusDetail } from "@/components/MonthlyFocusDetail";
 import { planningApi, type MonthlyFocus } from "@/lib/api";
 import { toDateString } from "@/lib/utils";
+import { useI18n } from "@/contexts/LanguageContext";
+import { dateLocale } from "@/lib/dateLocale";
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 // ── Deadline helpers ──────────────────────────────────────────────────────────
 
-function monthDeadlineText(deadline_date?: string): { text: string; overdue: boolean; urgent: boolean } | null {
+function monthDeadlineText(
+  deadline_date: string | undefined,
+  t: TFn,
+  locale: Locale
+): { text: string; overdue: boolean; urgent: boolean } | null {
   if (!deadline_date) return null;
   const today = new Date();
   const todayStr = toDateString(today);
   const diff = differenceInCalendarDays(parseISO(deadline_date), parseISO(todayStr));
-  if (diff < 0)  return { text: `Overdue by ${Math.abs(diff)}d`, overdue: true, urgent: false };
-  if (diff === 0) return { text: "Due today", overdue: false, urgent: true };
-  if (diff === 1) return { text: "Due tomorrow", overdue: false, urgent: true };
-  return { text: `Due ${format(parseISO(deadline_date), "MMM d")}`, overdue: false, urgent: false };
+  if (diff < 0)  return { text: t("deadline.overdueByDays", { n: Math.abs(diff) }), overdue: true, urgent: false };
+  if (diff === 0) return { text: t("deadline.dueToday"), overdue: false, urgent: true };
+  if (diff === 1) return { text: t("deadline.dueTomorrow"), overdue: false, urgent: true };
+  return { text: t("deadline.dueOn", { date: format(parseISO(deadline_date), "MMM d", { locale }) }), overdue: false, urgent: false };
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function MonthView() {
+  const { t, lang } = useI18n();
+  const locale = dateLocale(lang);
   const [month, setMonth]     = useState(new Date());
   const [focuses, setFocuses] = useState<MonthlyFocus[]>([]);
   const [newTitle, setNewTitle]   = useState("");
@@ -46,14 +56,16 @@ export function MonthView() {
 
   const daysInMonth    = getDaysInMonth(month);
   const firstDayOffset = (getDay(startOfMonth(month)) + 6) % 7; // Mon=0
+  const weekStart      = startOfWeek(month, { weekStartsOn: 1 });
+  const weekdays       = Array.from({ length: 7 }, (_, i) => format(addDays(weekStart, i), "EEE", { locale }));
 
   // Quick deadline options for this month
   const eom        = toDateString(lastDayOfMonth(month));
   const midMonth   = toDateString(setDate(new Date(year, monthNum - 1, 1), 15));
   const todayStr   = toDateString(today);
   const quickOpts  = [
-    ...(midMonth > todayStr ? [{ label: "Mid-month (15th)", date: midMonth }] : []),
-    { label: "End of month", date: eom },
+    ...(midMonth > todayStr ? [{ label: t("month.midMonth"), date: midMonth }] : []),
+    { label: t("month.endOfMonth"), date: eom },
   ];
 
   const addFocus = async () => {
@@ -134,16 +146,16 @@ export function MonthView() {
     <div className="mx-auto max-w-3xl space-y-4">
       {/* Month navigation */}
       <div className="flex items-center justify-between">
-        <Button variant="outline" size="sm" onClick={() => setMonth((m) => subMonths(m, 1))}>Prev</Button>
-        <h2 className="font-semibold">{format(month, "MMMM yyyy")}</h2>
-        <Button variant="outline" size="sm" onClick={() => setMonth((m) => addMonths(m, 1))}>Next</Button>
+        <Button variant="outline" size="sm" onClick={() => setMonth((m) => subMonths(m, 1))}>{t("common.prev")}</Button>
+        <h2 className="font-semibold">{format(month, "MMMM yyyy", { locale })}</h2>
+        <Button variant="outline" size="sm" onClick={() => setMonth((m) => addMonths(m, 1))}>{t("common.next")}</Button>
       </div>
 
       {/* Calendar grid */}
       <div className="rounded-xl border">
         <div className="grid grid-cols-7 border-b">
-          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-            <div key={d} className="py-2 text-center text-xs font-medium text-muted-foreground">{d}</div>
+          {weekdays.map((d, i) => (
+            <div key={i} className="py-2 text-center text-xs font-medium text-muted-foreground">{d}</div>
           ))}
         </div>
         <div className="grid grid-cols-7">
@@ -173,15 +185,15 @@ export function MonthView() {
       {/* Monthly focus areas */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Monthly Focus Areas</CardTitle>
+          <CardTitle className="text-base">{t("month.focusAreas")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-1">
           {focuses.length === 0 && (
-            <p className="text-sm text-muted-foreground">No focus areas yet.</p>
+            <p className="text-sm text-muted-foreground">{t("month.noFocus")}</p>
           )}
 
           {focuses.map((f) => {
-            const dlInfo  = monthDeadlineText(f.deadline_date);
+            const dlInfo  = monthDeadlineText(f.deadline_date, t, locale);
             const picking = dlPickerId === f.id;
             return (
               <div
@@ -194,7 +206,7 @@ export function MonthView() {
                   <button
                     onClick={() => setExpandedId(expandedId === f.id ? null : f.id)}
                     className="shrink-0 text-muted-foreground hover:text-foreground"
-                    title={expandedId === f.id ? "Collapse" : "Expand"}
+                    title={expandedId === f.id ? t("common.collapse") : t("common.expand")}
                   >
                     <ChevronRight className={`h-4 w-4 transition-transform ${expandedId === f.id ? "rotate-90" : ""}`} />
                   </button>
@@ -247,10 +259,10 @@ export function MonthView() {
                         onClick={() => saveDeadline(f.id)}
                         className="rounded px-2 py-0.5 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90"
                       >
-                        Save
+                        {t("common.save")}
                       </button>
                       <button onClick={() => setDlPickerId(null)} className="text-xs text-muted-foreground hover:text-foreground">
-                        Cancel
+                        {t("common.cancel")}
                       </button>
                     </div>
                   </div>
@@ -276,7 +288,7 @@ export function MonthView() {
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addFocus()}
-                placeholder="Add a focus area..."
+                placeholder={t("month.addFocusPlaceholder")}
                 className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
               <Button size="sm" onClick={addFocus}><Plus className="h-4 w-4" /></Button>
@@ -289,7 +301,7 @@ export function MonthView() {
                 className="flex items-center gap-1 pl-1 text-xs text-muted-foreground/40 hover:text-muted-foreground transition-colors"
               >
                 <Clock className="h-3 w-3" />
-                Due by...
+                {t("common.dueBy")}
               </button>
             ) : (
               <div className="pl-1">

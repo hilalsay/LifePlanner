@@ -1,27 +1,38 @@
 import { useState, useEffect } from "react";
 import { Plus, Check, Clock, X } from "lucide-react";
-import { format, startOfWeek, addWeeks, subWeeks, addDays, differenceInCalendarDays, parseISO } from "date-fns";
+import { format, startOfWeek, addWeeks, subWeeks, addDays, differenceInCalendarDays, parseISO, type Locale } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { planningApi, type WeeklyPriority } from "@/lib/api";
 import { getISOWeek, toDateString } from "@/lib/utils";
+import { setChatDragItem } from "@/lib/dragItem";
+import { useI18n } from "@/contexts/LanguageContext";
+import { dateLocale } from "@/lib/dateLocale";
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 // ── Deadline helpers ──────────────────────────────────────────────────────────
 
-function weekDeadlineText(deadline_date?: string): { text: string; overdue: boolean; urgent: boolean } | null {
+function weekDeadlineText(
+  deadline_date: string | undefined,
+  t: TFn,
+  locale: Locale
+): { text: string; overdue: boolean; urgent: boolean } | null {
   if (!deadline_date) return null;
   const today = new Date();
   const todayStr = toDateString(today);
   const diff = differenceInCalendarDays(parseISO(deadline_date), parseISO(todayStr));
-  if (diff < 0) return { text: `Overdue by ${Math.abs(diff)}d`, overdue: true, urgent: false };
-  if (diff === 0) return { text: "Due today", overdue: false, urgent: true };
-  if (diff === 1) return { text: "Due tomorrow", overdue: false, urgent: true };
-  return { text: `Due ${format(parseISO(deadline_date), "EEE, MMM d")}`, overdue: false, urgent: false };
+  if (diff < 0) return { text: t("deadline.overdueByDays", { n: Math.abs(diff) }), overdue: true, urgent: false };
+  if (diff === 0) return { text: t("deadline.dueToday"), overdue: false, urgent: true };
+  if (diff === 1) return { text: t("deadline.dueTomorrow"), overdue: false, urgent: true };
+  return { text: t("deadline.dueOn", { date: format(parseISO(deadline_date), "EEE, MMM d", { locale }) }), overdue: false, urgent: false };
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function WeekView() {
+  const { t, lang } = useI18n();
+  const locale = dateLocale(lang);
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [priorities, setPriorities] = useState<WeeklyPriority[]>([]);
   const [newTitle, setNewTitle]     = useState("");
@@ -49,7 +60,7 @@ export function WeekView() {
     const ds        = toDateString(d);
     const pastToday = ds < todayStr;
     const date      = pastToday && isCurrentWeek ? toDateString(addDays(d, 7)) : ds;
-    return { label: format(d, "EEE"), date, nextWeek: pastToday && isCurrentWeek };
+    return { label: format(d, "EEE", { locale }), date, nextWeek: pastToday && isCurrentWeek };
   });
 
   const addPriority = async () => {
@@ -122,14 +133,14 @@ export function WeekView() {
     <div className="mx-auto max-w-3xl space-y-4">
       {/* Week navigation */}
       <div className="flex items-center justify-between">
-        <Button variant="outline" size="sm" onClick={() => setWeekStart((w) => subWeeks(w, 1))}>Prev</Button>
+        <Button variant="outline" size="sm" onClick={() => setWeekStart((w) => subWeeks(w, 1))}>{t("common.prev")}</Button>
         <div className="text-center">
-          <p className="font-medium">Week {week}</p>
+          <p className="font-medium">{t("week.weekNumber", { n: week })}</p>
           <p className="text-xs text-muted-foreground">
-            {format(weekStart, "MMM d")} – {format(addDays(weekStart, 6), "MMM d, yyyy")}
+            {format(weekStart, "MMM d", { locale })} – {format(addDays(weekStart, 6), "MMM d, yyyy", { locale })}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setWeekStart((w) => addWeeks(w, 1))}>Next</Button>
+        <Button variant="outline" size="sm" onClick={() => setWeekStart((w) => addWeeks(w, 1))}>{t("common.next")}</Button>
       </div>
 
       {/* Day grid */}
@@ -146,8 +157,8 @@ export function WeekView() {
                   : "text-muted-foreground"
               }`}
             >
-              <p>{format(day, "EEE")}</p>
-              <p className="text-base font-medium">{format(day, "d")}</p>
+              <p>{format(day, "EEE", { locale })}</p>
+              <p className="text-base font-medium">{format(day, "d", { locale })}</p>
             </div>
           );
         })}
@@ -156,19 +167,29 @@ export function WeekView() {
       {/* Priorities */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Weekly Priorities</CardTitle>
+          <CardTitle className="text-base">{t("week.priorities")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-1">
           {priorities.length === 0 && (
-            <p className="text-sm text-muted-foreground">No priorities yet.</p>
+            <p className="text-sm text-muted-foreground">{t("week.noPriorities")}</p>
           )}
 
           {priorities.map((p) => {
-            const dlInfo  = weekDeadlineText(p.deadline_date);
+            const dlInfo  = weekDeadlineText(p.deadline_date, t, locale);
             const picking = dlPickerId === p.id;
             return (
               <div
                 key={p.id}
+                draggable
+                onDragStart={(e) =>
+                  setChatDragItem(e, {
+                    kind: "weekly",
+                    title: p.title,
+                    deadline: p.deadline_date,
+                    completed: p.is_completed,
+                    description: p.description,
+                  })
+                }
                 className={`group flex flex-col rounded-md border px-3 py-2 transition-colors ${
                   dlInfo?.overdue && !p.is_completed
                     ? "border-red-200 bg-red-50/60 dark:border-red-900 dark:bg-red-950/20"
@@ -230,10 +251,10 @@ export function WeekView() {
                         onClick={() => saveDeadline(p.id)}
                         className="rounded px-2 py-0.5 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90"
                       >
-                        Save
+                        {t("common.save")}
                       </button>
                       <button onClick={() => setDlPickerId(null)} className="text-xs text-muted-foreground hover:text-foreground">
-                        Cancel
+                        {t("common.cancel")}
                       </button>
                     </div>
                   </div>
@@ -250,7 +271,7 @@ export function WeekView() {
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addPriority()}
-                placeholder="Add a priority..."
+                placeholder={t("week.addPriorityPlaceholder")}
                 className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
               <Button size="sm" onClick={addPriority}><Plus className="h-4 w-4" /></Button>
@@ -263,7 +284,7 @@ export function WeekView() {
                 className="flex items-center gap-1 pl-1 text-xs text-muted-foreground/40 hover:text-muted-foreground transition-colors"
               >
                 <Clock className="h-3 w-3" />
-                Due by...
+                {t("common.dueBy")}
               </button>
             ) : (
               <div className="pl-1">

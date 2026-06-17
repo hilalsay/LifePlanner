@@ -1,5 +1,7 @@
 // Shared types for the Assistant panel.
 
+import type { DragItem } from "@/lib/dragItem";
+
 export type SuggestionKind = "monthly" | "weekly" | "habit" | "task";
 
 export interface Suggestion {
@@ -14,6 +16,7 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   suggestions?: Suggestion[];
+  attachments?: DragItem[];
 }
 
 let counter = 0;

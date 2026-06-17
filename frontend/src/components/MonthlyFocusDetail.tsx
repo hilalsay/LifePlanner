@@ -1,10 +1,15 @@
 import { useState, useEffect } from "react";
 import {
   startOfMonth, lastDayOfMonth, startOfWeek, addWeeks, format, isWithinInterval,
+  type Locale,
 } from "date-fns";
 import { Check, Plus, Trash2, Pencil } from "lucide-react";
 import { planningApi, type MonthlyFocus, type WeeklyPriority } from "@/lib/api";
 import { getISOWeek } from "@/lib/utils";
+import { useI18n } from "@/contexts/LanguageContext";
+import { dateLocale } from "@/lib/dateLocale";
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 interface WeekOpt { year: number; week: number; label: string; }
 
@@ -15,7 +20,7 @@ interface Props {
 }
 
 // Weeks (Mondays) that overlap the focus's month
-function weeksInMonth(year: number, month: number): WeekOpt[] {
+function weeksInMonth(year: number, month: number, t: TFn, locale: Locale): WeekOpt[] {
   const first = startOfMonth(new Date(year, month - 1, 1));
   const last = lastDayOfMonth(first);
   const opts: WeekOpt[] = [];
@@ -24,7 +29,7 @@ function weeksInMonth(year: number, month: number): WeekOpt[] {
     opts.push({
       year: cur.getFullYear(),
       week: getISOWeek(cur),
-      label: `Week ${getISOWeek(cur)} · ${format(cur, "MMM d")}`,
+      label: t("focusDetail.weekLabel", { n: getISOWeek(cur), date: format(cur, "MMM d", { locale }) }),
     });
     cur = addWeeks(cur, 1);
   }
@@ -32,6 +37,8 @@ function weeksInMonth(year: number, month: number): WeekOpt[] {
 }
 
 export function MonthlyFocusDetail({ focus, onUpdate, onDelete }: Props) {
+  const { t, lang } = useI18n();
+  const locale = dateLocale(lang);
   // ── Edit title/description ──
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(focus.title);
@@ -41,7 +48,7 @@ export function MonthlyFocusDetail({ focus, onUpdate, onDelete }: Props) {
   // ── Linked weekly tasks ──
   const [tasks, setTasks] = useState<WeeklyPriority[]>([]);
   const [newTask, setNewTask] = useState("");
-  const weekOpts = weeksInMonth(focus.year, focus.month);
+  const weekOpts = weeksInMonth(focus.year, focus.month, t, locale);
 
   // Default to the week containing today if it's in this month, else first week
   const defaultWeek = (() => {
@@ -119,7 +126,7 @@ export function MonthlyFocusDetail({ focus, onUpdate, onDelete }: Props) {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
-            placeholder="Detail plan — what does this focus involve? Key steps, context, why it matters…"
+            placeholder={t("focusDetail.detailPlanPlaceholder")}
             className="w-full resize-none rounded-md border bg-background px-2.5 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
           />
           <div className="flex gap-2">
@@ -128,13 +135,13 @@ export function MonthlyFocusDetail({ focus, onUpdate, onDelete }: Props) {
               disabled={savingEdit}
               className="rounded px-2.5 py-1 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
             >
-              {savingEdit ? "Saving…" : "Save"}
+              {savingEdit ? t("common.saving") : t("common.save")}
             </button>
             <button onClick={() => setEditing(false)} className="text-xs text-muted-foreground hover:text-foreground">
-              Cancel
+              {t("common.cancel")}
             </button>
             <button onClick={onDelete} className="ml-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive">
-              <Trash2 className="h-3.5 w-3.5" /> Delete focus
+              <Trash2 className="h-3.5 w-3.5" /> {t("focusDetail.deleteFocus")}
             </button>
           </div>
         </div>
@@ -143,13 +150,13 @@ export function MonthlyFocusDetail({ focus, onUpdate, onDelete }: Props) {
           {focus.description ? (
             <p className="whitespace-pre-wrap text-xs text-muted-foreground">{focus.description}</p>
           ) : (
-            <p className="text-xs italic text-muted-foreground/60">No detail plan yet.</p>
+            <p className="text-xs italic text-muted-foreground/60">{t("focusDetail.noDetailPlan")}</p>
           )}
           <button
             onClick={() => { setTitle(focus.title); setDescription(focus.description ?? ""); setEditing(true); }}
             className="mt-1 flex items-center gap-1 text-xs text-muted-foreground/50 transition-colors hover:text-foreground"
           >
-            <Pencil className="h-3 w-3" /> Edit plan
+            <Pencil className="h-3 w-3" /> {t("focusDetail.editPlan")}
           </button>
         </div>
       )}
@@ -157,9 +164,9 @@ export function MonthlyFocusDetail({ focus, onUpdate, onDelete }: Props) {
       {/* ── Linked weekly tasks ── */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Weekly Tasks</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("focusDetail.weeklyTasks")}</p>
           {tasks.length > 0 && (
-            <span className="text-xs text-muted-foreground">{doneCount} / {tasks.length} done</span>
+            <span className="text-xs text-muted-foreground">{t("common.doneCount", { done: doneCount, total: tasks.length })}</span>
           )}
         </div>
 
@@ -178,7 +185,7 @@ export function MonthlyFocusDetail({ focus, onUpdate, onDelete }: Props) {
             <span className={`flex-1 text-xs ${p.is_completed ? "line-through text-muted-foreground" : ""}`}>
               {p.title}
             </span>
-            <span className="shrink-0 text-[10px] text-muted-foreground">Wk {p.week_number}</span>
+            <span className="shrink-0 text-[10px] text-muted-foreground">{t("focusDetail.weekShort", { n: p.week_number })}</span>
             <button
               onClick={() => deleteTask(p.id)}
               className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover/task:opacity-100"
@@ -194,7 +201,7 @@ export function MonthlyFocusDetail({ focus, onUpdate, onDelete }: Props) {
             value={selectedWeek}
             onChange={(e) => setSelectedWeek(Number(e.target.value))}
             className="shrink-0 rounded-md border bg-background px-1.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
-            title="Which week"
+            title={t("focusDetail.whichWeek")}
           >
             {weekOpts.map((o) => (
               <option key={o.week} value={o.week}>{o.label}</option>
@@ -205,7 +212,7 @@ export function MonthlyFocusDetail({ focus, onUpdate, onDelete }: Props) {
             value={newTask}
             onChange={(e) => setNewTask(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && addTask()}
-            placeholder="Add a weekly task…"
+            placeholder={t("focusDetail.addWeeklyTaskPlaceholder")}
             className="min-w-0 flex-1 rounded-md border bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
           />
           <button

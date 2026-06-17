@@ -127,6 +127,43 @@ def _plan_context(db: Session, user_id: uuid.UUID) -> dict:
     }
 
 
+_ATTACH_LABEL = {
+    "task": "task",
+    "weekly": "weekly priority",
+    "monthly": "monthly focus",
+    "yearly": "yearly goal",
+    "habit": "habit",
+}
+
+
+def _format_attachments(attachments: list[dict]) -> str:
+    """Render attached plan items as context text for the model."""
+    lines = []
+    for a in attachments or []:
+        label = _ATTACH_LABEL.get(a.get("kind", ""), "item")
+        meta = []
+        if a.get("priority"):
+            meta.append(f"{a['priority']} priority")
+        if a.get("deadline"):
+            meta.append(f"due {a['deadline']}")
+        if a.get("completed"):
+            meta.append("completed")
+        if a.get("description"):
+            meta.append(str(a["description"]))
+        suffix = f" ({', '.join(meta)})" if meta else ""
+        lines.append(f'- {label}: "{a.get("title", "")}"{suffix}')
+    if not lines:
+        return ""
+    return "Attached items from my plan:\n" + "\n".join(lines)
+
+
+def _compose_ai_content(content: str, attachments: list[dict]) -> str:
+    att = _format_attachments(attachments)
+    if att and content:
+        return f"{att}\n\n{content}"
+    return att or content
+
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat(
     req: ChatRequest,
@@ -134,10 +171,12 @@ async def chat(
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):
     content = (req.content or "").strip()
-    if not content:
-        raise HTTPException(400, "content is required")
+    attachments = [a.model_dump() for a in req.attachments]
+    if not content and not attachments:
+        raise HTTPException(400, "content or attachments required")
 
     # Resolve (or create) the conversation.
+    title_seed = content or (attachments[0]["title"] if attachments else "New chat")
     if req.conversation_id:
         convo = db.query(Conversation).filter(
             Conversation.id == req.conversation_id,
@@ -147,25 +186,34 @@ async def chat(
         if not convo:
             raise HTTPException(404, "Conversation not found")
     else:
-        convo = Conversation(user_id=user_id, title=content[:60])
+        convo = Conversation(user_id=user_id, title=title_seed[:60])
         db.add(convo)
         db.flush()  # assign id
 
-    # Build history from stored messages (the DB is the source of truth).
-    history = [
-        {"role": m.role, "content": m.content}
-        for m in db.query(ChatMessage).filter(
-            ChatMessage.conversation_id == convo.id,
-            ChatMessage.is_deleted == False,
-        ).order_by(ChatMessage.created_at).all()
-    ]
-    history.append({"role": "user", "content": content})
+    # Build history from stored messages (the DB is the source of truth),
+    # folding each user turn's attachments back into its content for context.
+    history = []
+    for m in db.query(ChatMessage).filter(
+        ChatMessage.conversation_id == convo.id,
+        ChatMessage.is_deleted == False,
+    ).order_by(ChatMessage.created_at).all():
+        c = m.content
+        if m.role == "user" and m.attachments:
+            c = _compose_ai_content(m.content, m.attachments)
+        history.append({"role": m.role, "content": c})
+    history.append({"role": "user", "content": _compose_ai_content(content, attachments)})
 
-    # Persist the user's message.
-    db.add(ChatMessage(user_id=user_id, conversation_id=convo.id, role="user", content=content))
+    # Persist the user's message (content stays clean; attachments stored separately).
+    db.add(ChatMessage(
+        user_id=user_id,
+        conversation_id=convo.id,
+        role="user",
+        content=content,
+        attachments=attachments or None,
+    ))
 
     # Call the model with the plan context.
-    result = await chat_with_assistant(history, _plan_context(db, user_id))
+    result = await chat_with_assistant(history, _plan_context(db, user_id), req.language)
 
     # Persist the assistant's reply (with its suggestions).
     db.add(ChatMessage(

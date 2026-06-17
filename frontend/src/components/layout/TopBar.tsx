@@ -1,6 +1,8 @@
 import { Moon, Sun, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/useTheme";
+import { useI18n } from "@/contexts/LanguageContext";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { cn } from "@/lib/utils";
 
 interface TopBarProps {
@@ -11,6 +13,7 @@ interface TopBarProps {
 
 export function TopBar({ title, assistantOpen, onToggleAssistant }: TopBarProps) {
   const { theme, toggle } = useTheme();
+  const { t } = useI18n();
 
   return (
     <header className="flex h-14 items-center justify-between border-b bg-card px-4">
@@ -22,12 +25,13 @@ export function TopBar({ title, assistantOpen, onToggleAssistant }: TopBarProps)
           variant="ghost"
           size="icon"
           onClick={onToggleAssistant}
-          title="Assistant"
+          title={t("topbar.assistant")}
           className={cn(assistantOpen && "bg-primary/10 text-primary")}
         >
           <Sparkles className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={toggle} title="Toggle theme">
+        <LanguageToggle />
+        <Button variant="ghost" size="icon" onClick={toggle} title={t("topbar.toggleTheme")}>
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
       </div>

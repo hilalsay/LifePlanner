@@ -1,3 +1,5 @@
+import type { DragItem } from "./dragItem";
+
 const BASE = "/api/v1";
 
 let isRefreshing = false;
@@ -180,10 +182,15 @@ export const aiApi = {
     request<WeeklyAIReview>("/ai/weekly-review", { method: "POST", body: JSON.stringify({}) }),
   getWeeklyReviews: () =>
     request<WeeklyAIReview[]>("/ai/weekly-reviews"),
-  chat: (content: string, conversationId?: string) =>
+  chat: (content: string, conversationId?: string, attachments?: DragItem[], language?: string) =>
     request<ChatResponse>("/ai/chat", {
       method: "POST",
-      body: JSON.stringify({ content, conversation_id: conversationId ?? null }),
+      body: JSON.stringify({
+        content,
+        conversation_id: conversationId ?? null,
+        attachments: attachments ?? [],
+        language: language ?? "en",
+      }),
     }),
   listConversations: () => request<Conversation[]>("/ai/conversations"),
   getConversation: (id: string) => request<ConversationDetail>(`/ai/conversations/${id}`),
@@ -216,6 +223,7 @@ export interface StoredChatMessage {
   role: "user" | "assistant";
   content: string;
   suggestions?: ChatSuggestion[] | null;
+  attachments?: DragItem[] | null;
   created_at: string;
 }
 

@@ -97,8 +97,14 @@ Only return valid JSON, nothing else."""
 ALLOWED_KINDS = {"monthly", "weekly", "habit", "task"}
 
 
-def _build_chat_system_instruction(ctx: dict) -> str:
+_LANG_NAME = {"en": "English", "tr": "Turkish"}
+
+
+def _build_chat_system_instruction(ctx: dict, language: str = "en") -> str:
+    lang_name = _LANG_NAME.get(language, "English")
     return f"""You are the planning assistant inside "Life Planner", a personal goal app.
+
+Always write the "message" field in {lang_name}, regardless of the language the user writes in. Suggestion "kind" values stay in English (monthly/weekly/habit/task), but titles and descriptions should be in {lang_name}.
 The user describes goals in natural language. Help them shape goals into concrete,
 trackable items that fit the app's hierarchy:
 - "monthly": a Monthly Focus — a theme/objective for the whole month
@@ -131,7 +137,7 @@ Examples:
 - User "help me get fit" -> {{"message": "Love it — let's make it stick:", "suggestions": [{{"kind": "habit", "title": "Walk 30 min daily", "description": "A simple daily activity habit."}}]}}"""
 
 
-async def chat_with_assistant(messages: list[dict], ctx: dict) -> dict:
+async def chat_with_assistant(messages: list[dict], ctx: dict, language: str = "en") -> dict:
     """Goal-planning chat. Returns {"message": str, "suggestions": [{kind,title,description}]}."""
     if not settings.gemini_api_key:
         return {
@@ -146,7 +152,7 @@ async def chat_with_assistant(messages: list[dict], ctx: dict) -> dict:
     genai.configure(api_key=settings.gemini_api_key)
     model = genai.GenerativeModel(
         "gemini-2.5-flash-lite",
-        system_instruction=_build_chat_system_instruction(ctx),
+        system_instruction=_build_chat_system_instruction(ctx, language),
         generation_config={"response_mime_type": "application/json"},
     )
 

@@ -14,20 +14,22 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useI18n } from "@/contexts/LanguageContext";
 
 const nav = [
-  { to: "/", icon: CalendarDays, label: "Today" },
-  { to: "/week", icon: CalendarRange, label: "Week" },
-  { to: "/month", icon: Calendar, label: "Month" },
-  { to: "/year", icon: LayoutGrid, label: "Year" },
-  { to: "/vision", icon: Target, label: "Vision" },
-  { to: "/habits", icon: Flame, label: "Habits" },
-  { to: "/tracking", icon: BarChart3, label: "Tracking" },
-  { to: "/overview", icon: CalendarCheck2, label: "Overview" },
+  { to: "/", icon: CalendarDays, key: "nav.today" },
+  { to: "/week", icon: CalendarRange, key: "nav.week" },
+  { to: "/month", icon: Calendar, key: "nav.month" },
+  { to: "/year", icon: LayoutGrid, key: "nav.year" },
+  { to: "/vision", icon: Target, key: "nav.vision" },
+  { to: "/habits", icon: Flame, key: "nav.habits" },
+  { to: "/tracking", icon: BarChart3, key: "nav.tracking" },
+  { to: "/overview", icon: CalendarCheck2, key: "nav.overview" },
 ];
 
 export function Sidebar() {
   const { user, logout } = useAuth();
+  const { t } = useI18n();
 
   return (
     <aside className="hidden md:flex h-screen w-60 flex-col border-r bg-card">
@@ -38,7 +40,7 @@ export function Sidebar() {
 
       <nav className="flex-1 overflow-y-auto py-4">
         <ul className="space-y-1 px-2">
-          {nav.map(({ to, icon: Icon, label }) => (
+          {nav.map(({ to, icon: Icon, key }) => (
             <li key={to}>
               <NavLink
                 to={to}
@@ -53,7 +55,7 @@ export function Sidebar() {
                 }
               >
                 <Icon className="h-4 w-4" />
-                {label}
+                {t(key)}
               </NavLink>
             </li>
           ))}
@@ -79,7 +81,7 @@ export function Sidebar() {
             </span>
             <button
               onClick={logout}
-              title="Sign out"
+              title={t("nav.signOut")}
               className="text-muted-foreground hover:text-foreground"
             >
               <LogOut className="h-4 w-4" />
@@ -99,7 +101,7 @@ export function Sidebar() {
           }
         >
           <Settings className="h-4 w-4" />
-          Settings
+          {t("nav.settings")}
         </NavLink>
       </div>
     </aside>

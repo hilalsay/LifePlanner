@@ -4,21 +4,14 @@ import { Sidebar } from "./Sidebar";
 import { BottomNav } from "./BottomNav";
 import { TopBar } from "./TopBar";
 import { AssistantPanel } from "@/components/chat/AssistantPanel";
+import { useI18n } from "@/contexts/LanguageContext";
 
-const PAGE_TITLES: Record<string, string> = {
-  "/": "Today",
-  "/week": "This Week",
-  "/month": "This Month",
-  "/year": "This Year",
-  "/vision": "Life Vision",
-  "/habits": "Habits",
-  "/tracking": "Tracking",
-  "/settings": "Settings",
-};
+const TITLE_PATHS = new Set(["/", "/week", "/month", "/year", "/vision", "/habits", "/tracking", "/settings"]);
 
 export function Layout() {
   const { pathname } = useLocation();
-  const title = PAGE_TITLES[pathname] ?? "Life Planner";
+  const { t } = useI18n();
+  const title = TITLE_PATHS.has(pathname) ? t(`title.${pathname}`) : t("title.default");
   const [assistantOpen, setAssistantOpen] = useState(false);
 
   return (

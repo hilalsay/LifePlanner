@@ -3,30 +3,42 @@ import {
   Plus, Check, Trash2, ChevronLeft, ChevronRight,
   GripVertical, Pencil, X, Clock,
 } from "lucide-react";
-import { format, addDays, subDays, differenceInMinutes, differenceInCalendarDays, parseISO } from "date-fns";
+import { format, addDays, subDays, differenceInMinutes, differenceInCalendarDays, parseISO, type Locale } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MotivationalBanner } from "@/components/MotivationalBanner";
 import { planningApi, type DailyTask } from "@/lib/api";
 import { toDateString } from "@/lib/utils";
+import { setChatDragItem } from "@/lib/dragItem";
+import { useI18n } from "@/contexts/LanguageContext";
+import { dateLocale } from "@/lib/dateLocale";
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 // ── Deadline helpers ──────────────────────────────────────────────────────────
 
-function hhmm(t: string): string {
-  return t.slice(0, 5); // "HH:MM:SS" → "HH:MM"
+function hhmm(s: string): string {
+  return s.slice(0, 5); // "HH:MM:SS" → "HH:MM"
 }
 
 type DeadlineStatus = "overdue" | "urgent" | "upcoming";
 
 function deadlineInfo(
-  deadline_date?: string,
-  deadline_time?: string,
+  deadline_date: string | undefined,
+  deadline_time: string | undefined,
+  t: TFn,
+  locale: Locale,
 ): { text: string; status: DeadlineStatus } | null {
   if (!deadline_date) return null;
 
   const now = new Date();
   const todayStr = toDateString(now);
+  const fmtTime = (h: number, m: number) => {
+    const d = new Date();
+    d.setHours(h, m, 0, 0);
+    return format(d, "p", { locale });
+  };
 
   if (deadline_date === todayStr && deadline_time) {
     const [h, m] = hhmm(deadline_time).split(":").map(Number);
@@ -35,37 +47,31 @@ function deadlineInfo(
     const diff = differenceInMinutes(dl, now);
     if (diff < 0) {
       const abs = Math.abs(diff);
-      return { text: abs < 60 ? `Overdue by ${abs}m` : `Overdue by ${Math.round(abs / 60)}h`, status: "overdue" };
+      return { text: abs < 60 ? t("deadline.overdueByMin", { n: abs }) : t("deadline.overdueByHours", { n: Math.round(abs / 60) }), status: "overdue" };
     }
-    if (diff < 60) return { text: `Due in ${diff}m`, status: "urgent" };
+    if (diff < 60) return { text: t("deadline.dueInMin", { n: diff }), status: "urgent" };
     if (diff <= 120) {
       const hrs = Math.floor(diff / 60);
       const mins = diff % 60;
-      return { text: mins ? `Due in ${hrs}h ${mins}m` : `Due in ${hrs}h`, status: "urgent" };
+      return { text: mins ? t("deadline.dueInHoursMin", { h: hrs, m: mins }) : t("deadline.dueInHours", { n: hrs }), status: "urgent" };
     }
-    const [hour, min] = [h % 12 || 12, String(m).padStart(2, "0")];
-    const ampm = h >= 12 ? "pm" : "am";
-    const timeStr = m === 0 ? `${hour}${ampm}` : `${hour}:${min}${ampm}`;
-    return { text: `Due today at ${timeStr}`, status: "urgent" };
+    return { text: t("deadline.dueToday") + t("deadline.atTime", { time: fmtTime(h, m) }), status: "urgent" };
   }
 
   const daysDiff = differenceInCalendarDays(parseISO(deadline_date), parseISO(todayStr));
   let timeSuffix = "";
   if (deadline_time) {
     const [h, m] = hhmm(deadline_time).split(":").map(Number);
-    const ampm = h >= 12 ? "pm" : "am";
-    const h12 = h % 12 || 12;
-    timeSuffix = m === 0 ? ` at ${h12}${ampm}` : ` at ${h12}:${String(m).padStart(2, "0")}${ampm}`;
+    timeSuffix = t("deadline.atTime", { time: fmtTime(h, m) });
   }
 
   if (daysDiff < 0) {
-    const abs = Math.abs(daysDiff);
-    return { text: `Overdue by ${abs}d`, status: "overdue" };
+    return { text: t("deadline.overdueByDays", { n: Math.abs(daysDiff) }), status: "overdue" };
   }
-  if (daysDiff === 0) return { text: `Due today${timeSuffix}`, status: "urgent" };
-  if (daysDiff === 1) return { text: `Due tomorrow${timeSuffix}`, status: "upcoming" };
-  if (daysDiff <= 6) return { text: `Due ${format(parseISO(deadline_date), "EEE")}${timeSuffix}`, status: "upcoming" };
-  return { text: `Due ${format(parseISO(deadline_date), "MMM d")}${timeSuffix}`, status: "upcoming" };
+  if (daysDiff === 0) return { text: t("deadline.dueToday") + timeSuffix, status: "urgent" };
+  if (daysDiff === 1) return { text: t("deadline.dueTomorrow") + timeSuffix, status: "upcoming" };
+  if (daysDiff <= 6) return { text: t("deadline.dueOn", { date: format(parseISO(deadline_date), "EEE", { locale }) }) + timeSuffix, status: "upcoming" };
+  return { text: t("deadline.dueOn", { date: format(parseISO(deadline_date), "MMM d", { locale }) }) + timeSuffix, status: "upcoming" };
 }
 
 function isOverdue(task: DailyTask, now = new Date()): boolean {
@@ -89,17 +95,18 @@ const STATUS_CLASSES: Record<DeadlineStatus, string> = {
 
 // ── Quick-time options ────────────────────────────────────────────────────────
 
-function quickTimeOpts() {
+function quickTimeOpts(t: TFn, locale: Locale) {
   const now = new Date();
   const in1h = new Date(now.getTime() + 60 * 60_000);
   const in2h = new Date(now.getTime() + 2 * 60 * 60_000);
   const makeTime = (d: Date) => format(d, "HH:mm");
   const makeDate = (d: Date) => toDateString(d);
+  const at = (h: number) => { const d = new Date(); d.setHours(h, 0, 0, 0); return format(d, "p", { locale }); };
   return [
-    { label: "In 1h",  date: makeDate(in1h), time: makeTime(in1h) },
-    { label: "In 2h",  date: makeDate(in2h), time: makeTime(in2h) },
-    { label: "5 pm",   date: makeDate(now),  time: "17:00" },
-    { label: "9 pm",   date: makeDate(now),  time: "21:00" },
+    { label: t("day.inHours", { n: 1 }), date: makeDate(in1h), time: makeTime(in1h) },
+    { label: t("day.inHours", { n: 2 }), date: makeDate(in2h), time: makeTime(in2h) },
+    { label: at(17),  date: makeDate(now),  time: "17:00" },
+    { label: at(21),  date: makeDate(now),  time: "21:00" },
   ];
 }
 
@@ -138,7 +145,8 @@ interface DeadlinePickerProps {
 }
 
 function DeadlinePicker({ date, time, onDate, onTime, onClear, compact }: DeadlinePickerProps) {
-  const opts = quickTimeOpts();
+  const { t, lang } = useI18n();
+  const opts = quickTimeOpts(t, dateLocale(lang));
   return (
     <div className={`flex flex-wrap items-center gap-1.5 ${compact ? "" : "pt-0.5"}`}>
       {opts.map((o) => {
@@ -182,15 +190,16 @@ function DeadlineBadge({
   task: DailyTask;
   onClick?: () => void;
 }) {
+  const { t, lang } = useI18n();
   if (task.is_completed || !task.deadline_date) return null;
-  const info = deadlineInfo(task.deadline_date, task.deadline_time);
+  const info = deadlineInfo(task.deadline_date, task.deadline_time, t, dateLocale(lang));
   if (!info) return null;
   return (
     <button
       type="button"
       onClick={onClick}
       className={`shrink-0 flex items-center gap-1 text-xs font-medium transition-opacity hover:opacity-70 ${STATUS_CLASSES[info.status]}`}
-      title="Click to edit deadline"
+      title={t("day.editDeadline")}
     >
       <Clock className="h-3 w-3" />
       {info.text}
@@ -201,6 +210,8 @@ function DeadlineBadge({
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function DayView() {
+  const { t, lang } = useI18n();
+  const locale = dateLocale(lang);
   const [date, setDate]   = useState(new Date());
   const [tasks, setTasks] = useState<DailyTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -332,7 +343,7 @@ export function DayView() {
   };
   const handleDragEnd = () => { setDragId(null); setDragOverId(null); };
 
-  const completed = tasks.filter((t) => t.is_completed).length;
+  const completed = tasks.filter((task) => task.is_completed).length;
   const now       = new Date();
 
   return (
@@ -345,8 +356,8 @@ export function DayView() {
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <div className="text-center">
-          <p className="text-sm font-medium">{format(date, "EEEE")}</p>
-          <p className="text-xs text-muted-foreground">{format(date, "MMMM d, yyyy")}</p>
+          <p className="text-sm font-medium">{format(date, "EEEE", { locale })}</p>
+          <p className="text-xs text-muted-foreground">{format(date, "MMMM d, yyyy", { locale })}</p>
         </div>
         <Button variant="ghost" size="icon" onClick={() => setDate((d) => addDays(d, 1))}>
           <ChevronRight className="h-4 w-4" />
@@ -357,16 +368,16 @@ export function DayView() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Tasks</CardTitle>
-            <span className="text-xs text-muted-foreground">{completed} / {tasks.length} done</span>
+            <CardTitle className="text-base">{t("day.tasks")}</CardTitle>
+            <span className="text-xs text-muted-foreground">{t("common.doneCount", { done: completed, total: tasks.length })}</span>
           </div>
         </CardHeader>
 
         <CardContent className="space-y-1">
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading...</p>
+            <p className="text-sm text-muted-foreground">{t("day.loading")}</p>
           ) : displayedTasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No tasks yet. Add one below.</p>
+            <p className="text-sm text-muted-foreground">{t("day.noTasks")}</p>
           ) : (
             displayedTasks.map((task) => {
               const overdue    = isOverdue(task, now);
@@ -378,8 +389,19 @@ export function DayView() {
               return (
                 <div
                   key={task.id}
-                  draggable={!overdue}
-                  onDragStart={(e) => !overdue && handleDragStart(e, task.id)}
+                  draggable
+                  onDragStart={(e) => {
+                    // Reorder first (sets effectAllowed="move"), then the chat
+                    // payload, which sets "copyMove" so the panel can accept it.
+                    if (!overdue) handleDragStart(e, task.id);
+                    setChatDragItem(e, {
+                      kind: "task",
+                      title: task.title,
+                      priority: task.priority,
+                      deadline: task.deadline_date,
+                      completed: task.is_completed,
+                    });
+                  }}
                   onDragOver={(e) => handleDragOver(e, task.id)}
                   onDrop={() => handleDrop(task.id)}
                   onDragEnd={handleDragEnd}
@@ -459,7 +481,7 @@ export function DayView() {
                           variant={PRIORITY_COLORS[task.priority as keyof typeof PRIORITY_COLORS] ?? "outline"}
                           className="cursor-pointer text-xs shrink-0"
                           onClick={() => cyclePriority(task)}
-                          title="Click to change priority"
+                          title={t("day.changePriority")}
                         >
                           {task.priority}
                         </Badge>
@@ -523,7 +545,7 @@ export function DayView() {
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addTask()}
-                placeholder="Add a task..."
+                placeholder={t("day.addPlaceholder")}
                 className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
               />
               <Button size="sm" onClick={addTask}><Plus className="h-4 w-4" /></Button>
@@ -549,7 +571,7 @@ export function DayView() {
                   onClear={() => { setNewDlDate(""); setNewDlTime(""); setShowDlPicker(false); }}
                 />
                 {(newDlDate || newDlTime) && (() => {
-                  const info = deadlineInfo(newDlDate || toDateString(new Date()), newDlTime);
+                  const info = deadlineInfo(newDlDate || toDateString(new Date()), newDlTime, t, locale);
                   return info ? (
                     <span className={`mt-0.5 inline-flex items-center gap-1 text-xs font-medium ${STATUS_CLASSES[info.status]}`}>
                       <Clock className="h-3 w-3" />

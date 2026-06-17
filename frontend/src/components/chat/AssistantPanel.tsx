@@ -15,10 +15,14 @@ import {
   SquarePen,
   History,
   Trash2,
+  Target,
+  Paperclip,
 } from "lucide-react";
 import { cn, getISOWeek, toDateString } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { aiApi, planningApi, habitsApi, type Conversation } from "@/lib/api";
+import { hasChatDragItem, readChatDragItem, type DragItem, type DragItemKind } from "@/lib/dragItem";
+import { useI18n } from "@/contexts/LanguageContext";
 import {
   uid,
   type ChatMessage,
@@ -31,30 +35,55 @@ interface AssistantPanelProps {
   onClose: () => void;
 }
 
-const KIND_META: Record<
-  SuggestionKind,
-  { label: string; icon: typeof Calendar; className: string }
-> = {
-  monthly: { label: "Monthly focus", icon: Calendar, className: "text-violet-500" },
-  weekly: { label: "Weekly priority", icon: CalendarRange, className: "text-sky-500" },
-  habit: { label: "Habit", icon: Flame, className: "text-orange-500" },
-  task: { label: "Task", icon: CheckSquare, className: "text-emerald-500" },
+const KIND_META: Record<SuggestionKind, { icon: typeof Calendar; className: string }> = {
+  monthly: { icon: Calendar, className: "text-violet-500" },
+  weekly: { icon: CalendarRange, className: "text-sky-500" },
+  habit: { icon: Flame, className: "text-orange-500" },
+  task: { icon: CheckSquare, className: "text-emerald-500" },
 };
 
-const GREETING: ChatMessage = {
-  id: "greeting",
-  role: "assistant",
-  content:
-    "Hi! Tell me what you'd like to work on — a goal, a habit, anything — and I'll suggest how to add it to your plan. Try \"I want to read more\" or \"help me get fit\".",
+const ATTACH_ICON: Record<DragItemKind, typeof Calendar> = {
+  monthly: Calendar,
+  weekly: CalendarRange,
+  yearly: Target,
+  habit: Flame,
+  task: CheckSquare,
 };
+
+function AttachmentChip({ item, onRemove }: { item: DragItem; onRemove?: () => void }) {
+  const { t } = useI18n();
+  const Icon = ATTACH_ICON[item.kind] ?? Paperclip;
+  return (
+    <span className="inline-flex max-w-[220px] items-center gap-1.5 rounded-md border bg-background py-1 pl-2 pr-1.5 text-xs">
+      <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      <span className="truncate font-medium">{item.title}</span>
+      {onRemove && (
+        <button
+          onClick={onRemove}
+          title={t("assistant.removeAttachment")}
+          className="shrink-0 text-muted-foreground hover:text-destructive"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </span>
+  );
+}
 
 type Tab = "chat" | "plan";
 
 const COOLDOWN_SECONDS = 3;
 
 export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
+  const { t, lang } = useI18n();
+  const makeGreeting = (): ChatMessage => ({
+    id: "greeting",
+    role: "assistant",
+    content: t("assistant.greeting"),
+  });
+
   const [tab, setTab] = useState<Tab>("chat");
-  const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [makeGreeting()]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const [plan, setPlan] = useState<Suggestion[]>([]);
@@ -68,8 +97,11 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
   const [convosLoaded, setConvosLoaded] = useState(false);
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [attachments, setAttachments] = useState<DragItem[]>([]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -78,9 +110,16 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
   // Tick down the post-send cooldown that throttles requests against the rate limit.
   useEffect(() => {
     if (cooldown <= 0) return;
-    const t = setTimeout(() => setCooldown((n) => n - 1), 1000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setCooldown((n) => n - 1), 1000);
+    return () => clearTimeout(timer);
   }, [cooldown]);
+
+  // Re-translate the greeting when the language changes, but only while the
+  // conversation is still just the fresh greeting (don't touch a real chat).
+  useEffect(() => {
+    setMessages((m) => (m.length === 1 && m[0].id === "greeting" ? [makeGreeting()] : m));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
 
   // Load the user's real current plan the first time the panel opens.
   useEffect(() => {
@@ -131,9 +170,10 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
   };
 
   const startNewChat = () => {
-    setMessages([GREETING]);
+    setMessages([makeGreeting()]);
     setCurrentId(null);
     setAddedIds(new Set());
+    setAttachments([]);
     setShowHistory(false);
     setTab("chat");
   };
@@ -151,10 +191,12 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
           title: s.title,
           description: s.description ?? undefined,
         })),
+        attachments: m.attachments ?? undefined,
       }));
-      setMessages(mapped.length ? mapped : [GREETING]);
+      setMessages(mapped.length ? mapped : [makeGreeting()]);
       setCurrentId(id);
       setAddedIds(new Set());
+      setAttachments([]);
       setShowHistory(false);
       setTab("chat");
     } catch {
@@ -174,15 +216,22 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
 
   const send = async () => {
     const text = input.trim();
-    if (!text || thinking || cooldown > 0) return;
+    if ((!text && attachments.length === 0) || thinking || cooldown > 0) return;
 
-    const userMsg: ChatMessage = { id: uid("msg"), role: "user", content: text };
+    const sentAttachments = attachments;
+    const userMsg: ChatMessage = {
+      id: uid("msg"),
+      role: "user",
+      content: text,
+      attachments: sentAttachments.length ? sentAttachments : undefined,
+    };
     setMessages((m) => [...m, userMsg]);
     setInput("");
+    setAttachments([]);
     setThinking(true);
 
     try {
-      const reply = await aiApi.chat(text, currentId ?? undefined);
+      const reply = await aiApi.chat(text, currentId ?? undefined, sentAttachments, lang);
       setCurrentId(reply.conversation_id);
       const suggestions: Suggestion[] = (reply.suggestions || []).map((s) => ({
         id: uid("sug"),
@@ -196,13 +245,16 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
       ]);
       refreshConversations(); // pick up the new/updated title and ordering
     } catch {
+      // Restore the draft so nothing is lost on failure.
+      setMessages((m) => m.filter((x) => x.id !== userMsg.id));
+      setInput(text);
+      setAttachments(sentAttachments);
       setMessages((m) => [
         ...m,
         {
           id: uid("msg"),
           role: "assistant",
-          content:
-            "Sorry — I couldn't reach the assistant. Check that the backend is running and GEMINI_API_KEY is set in backend/.env.",
+          content: t("assistant.errorReach"),
         },
       ]);
     } finally {
@@ -210,6 +262,23 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
       setCooldown(COOLDOWN_SECONDS);
     }
   };
+
+  // A plan item was dragged onto the panel — add it as an attachment chip.
+  const handleDrop = (e: React.DragEvent) => {
+    setDragOver(false);
+    const item = readChatDragItem(e);
+    if (!item) return;
+    e.preventDefault();
+    setShowHistory(false);
+    setTab("chat");
+    setAttachments((prev) =>
+      prev.some((a) => a.kind === item.kind && a.title === item.title) ? prev : [...prev, item]
+    );
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
+  const removeAttachment = (idx: number) =>
+    setAttachments((prev) => prev.filter((_, i) => i !== idx));
 
   // Persist an accepted suggestion as the matching planner entity.
   const persist = async (s: Suggestion) => {
@@ -276,31 +345,49 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
       />
 
       <aside
+        onDragOver={(e) => {
+          if (!hasChatDragItem(e)) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+          setDragOver(true);
+        }}
+        onDragLeave={(e) => {
+          // Only clear when the cursor actually leaves the panel.
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false);
+        }}
+        onDrop={handleDrop}
         className={cn(
           "fixed inset-y-0 right-0 z-40 flex w-full max-w-sm flex-col border-l bg-card shadow-xl",
-          "sm:static sm:z-auto sm:w-[380px] sm:max-w-none sm:shadow-none"
+          "sm:relative sm:z-auto sm:w-[380px] sm:max-w-none sm:shadow-none"
         )}
       >
+        {dragOver && (
+          <div className="pointer-events-none absolute inset-0 z-50 m-2 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-primary/10">
+            <span className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground">
+              {t("assistant.dropHere")}
+            </span>
+          </div>
+        )}
         {/* Header */}
         <div className="flex h-14 items-center justify-between border-b px-4">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            <span className="font-semibold tracking-tight">Assistant</span>
+            <span className="font-semibold tracking-tight">{t("assistant.title")}</span>
           </div>
           <div className="flex items-center gap-0.5">
-            <Button variant="ghost" size="icon" onClick={startNewChat} title="New chat">
+            <Button variant="ghost" size="icon" onClick={startNewChat} title={t("assistant.newChat")}>
               <SquarePen className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setShowHistory((v) => !v)}
-              title="Chat history"
+              title={t("assistant.history")}
               className={cn(showHistory && "bg-primary/10 text-primary")}
             >
               <History className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={onClose} title="Close">
+            <Button variant="ghost" size="icon" onClick={onClose} title={t("assistant.close")}>
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -318,12 +405,12 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
           <>
         {/* Tabs */}
         <div className="flex border-b p-1 gap-1">
-          <TabButton active={tab === "chat"} onClick={() => setTab("chat")} icon={MessageSquare} label="Chat" />
+          <TabButton active={tab === "chat"} onClick={() => setTab("chat")} icon={MessageSquare} label={t("assistant.tabChat")} />
           <TabButton
             active={tab === "plan"}
             onClick={() => setTab("plan")}
             icon={ListChecks}
-            label={`My Plan${plan.length ? ` (${plan.length})` : ""}`}
+            label={`${t("assistant.tabPlan")}${plan.length ? ` (${plan.length})` : ""}`}
           />
         </div>
 
@@ -345,8 +432,16 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
 
             {/* Composer */}
             <div className="border-t p-3">
+              {attachments.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {attachments.map((a, i) => (
+                    <AttachmentChip key={`${a.kind}-${a.title}-${i}`} item={a} onRemove={() => removeAttachment(i)} />
+                  ))}
+                </div>
+              )}
               <div className="flex items-end gap-2">
                 <textarea
+                  ref={inputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -356,22 +451,20 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
                     }
                   }}
                   rows={1}
-                  placeholder="Tell me about a goal…"
+                  placeholder={attachments.length ? t("assistant.placeholderAttached") : t("assistant.placeholder")}
                   className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
                 <Button
                   size="icon"
                   onClick={send}
-                  disabled={!input.trim() || thinking || cooldown > 0}
-                  title={cooldown > 0 ? `Wait ${cooldown}s` : "Send"}
+                  disabled={(!input.trim() && attachments.length === 0) || thinking || cooldown > 0}
+                  title={cooldown > 0 ? t("assistant.cooldown", { n: cooldown }) : t("assistant.send")}
                 >
                   {cooldown > 0 ? <span className="text-xs font-semibold">{cooldown}</span> : <Send className="h-4 w-4" />}
                 </Button>
               </div>
               <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                {cooldown > 0
-                  ? `You can send again in ${cooldown}s…`
-                  : "Powered by Gemini · suggestions save to your plan."}
+                {cooldown > 0 ? t("assistant.cooldown", { n: cooldown }) : t("assistant.footer")}
               </p>
             </div>
           </>
@@ -423,17 +516,27 @@ function MessageBubble({
 }) {
   const isUser = message.role === "user";
   return (
-    <div className={cn("flex flex-col gap-2", isUser ? "items-end" : "items-start")}>
-      <div
-        className={cn(
-          "max-w-[85%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed",
-          isUser
-            ? "rounded-br-sm bg-primary text-primary-foreground"
-            : "rounded-bl-sm bg-muted text-foreground"
-        )}
-      >
-        {message.content}
-      </div>
+    <div className={cn("flex flex-col gap-1.5", isUser ? "items-end" : "items-start")}>
+      {message.attachments && message.attachments.length > 0 && (
+        <div className={cn("flex flex-wrap gap-1.5", isUser && "justify-end")}>
+          {message.attachments.map((a, i) => (
+            <AttachmentChip key={`${a.kind}-${a.title}-${i}`} item={a} />
+          ))}
+        </div>
+      )}
+
+      {message.content && (
+        <div
+          className={cn(
+            "max-w-[85%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed",
+            isUser
+              ? "rounded-br-sm bg-primary text-primary-foreground"
+              : "rounded-bl-sm bg-muted text-foreground"
+          )}
+        >
+          {message.content}
+        </div>
+      )}
 
       {message.suggestions && message.suggestions.length > 0 && (
         <div className="w-full space-y-2">
@@ -463,6 +566,7 @@ function SuggestionCard({
   saving: boolean;
   onAdd: () => void;
 }) {
+  const { t } = useI18n();
   const meta = KIND_META[suggestion.kind];
   const Icon = meta.icon;
   return (
@@ -470,7 +574,7 @@ function SuggestionCard({
       <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", meta.className)} />
       <div className="min-w-0 flex-1">
         <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-          {meta.label}
+          {t(`kind.${suggestion.kind}`)}
         </div>
         <div className="truncate text-sm font-medium">{suggestion.title}</div>
         {suggestion.description && (
@@ -486,15 +590,15 @@ function SuggestionCard({
       >
         {added ? (
           <>
-            <Check className="h-3.5 w-3.5" /> Added
+            <Check className="h-3.5 w-3.5" /> {t("suggestion.added")}
           </>
         ) : saving ? (
           <>
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Adding
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("suggestion.adding")}
           </>
         ) : (
           <>
-            <Plus className="h-3.5 w-3.5" /> Add
+            <Plus className="h-3.5 w-3.5" /> {t("suggestion.add")}
           </>
         )}
       </Button>
@@ -503,6 +607,7 @@ function SuggestionCard({
 }
 
 function PlanTab({ plan }: { plan: Suggestion[] }) {
+  const { t } = useI18n();
   const order: SuggestionKind[] = ["monthly", "weekly", "habit", "task"];
   const groups = order
     .map((kind) => ({ kind, items: plan.filter((p) => p.kind === kind) }))
@@ -512,7 +617,7 @@ function PlanTab({ plan }: { plan: Suggestion[] }) {
     <div className="flex-1 space-y-5 overflow-y-auto p-4">
       {plan.length === 0 ? (
         <p className="pt-8 text-center text-sm text-muted-foreground">
-          Nothing added yet. Switch to Chat and add a suggestion.
+          {t("assistant.planEmpty")}
         </p>
       ) : (
         groups.map((g) => {
@@ -522,7 +627,7 @@ function PlanTab({ plan }: { plan: Suggestion[] }) {
             <div key={g.kind}>
               <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 <Icon className={cn("h-3.5 w-3.5", meta.className)} />
-                {meta.label}
+                {t(`kind.${g.kind}`)}
               </div>
               <ul className="space-y-2">
                 {g.items.map((item) => (
@@ -565,17 +670,18 @@ function HistoryView({
   onDelete: (id: string) => void;
   onNewChat: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="p-3">
         <Button variant="outline" className="w-full justify-start gap-2" onClick={onNewChat}>
-          <SquarePen className="h-4 w-4" /> New chat
+          <SquarePen className="h-4 w-4" /> {t("assistant.newChat")}
         </Button>
       </div>
       <div className="flex-1 overflow-y-auto px-2 pb-3">
         {conversations.length === 0 ? (
           <p className="px-2 pt-6 text-center text-sm text-muted-foreground">
-            No conversations yet.
+            {t("assistant.noConversations")}
           </p>
         ) : (
           <ul className="space-y-0.5">
@@ -591,11 +697,11 @@ function HistoryView({
                 >
                   <button onClick={() => onSelect(c.id)} className="flex min-w-0 flex-1 flex-col text-left">
                     <span className="truncate font-medium">{c.title}</span>
-                    <span className="text-[11px] text-muted-foreground">{relativeTime(c.updated_at)}</span>
+                    <span className="text-[11px] text-muted-foreground">{relativeTime(c.updated_at, t)}</span>
                   </button>
                   <button
                     onClick={() => onDelete(c.id)}
-                    title="Delete conversation"
+                    title={t("assistant.deleteConversation")}
                     className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -610,15 +716,15 @@ function HistoryView({
   );
 }
 
-function relativeTime(iso: string): string {
+function relativeTime(iso: string, t: (k: string, v?: Record<string, string | number>) => string): string {
   const then = new Date(iso).getTime();
   const diff = Math.max(0, Date.now() - then);
   const min = Math.floor(diff / 60000);
-  if (min < 1) return "just now";
-  if (min < 60) return `${min}m ago`;
+  if (min < 1) return t("time.justNow");
+  if (min < 60) return t("time.minutes", { n: min });
   const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
+  if (hr < 24) return t("time.hours", { n: hr });
   const day = Math.floor(hr / 24);
-  if (day < 7) return `${day}d ago`;
+  if (day < 7) return t("time.days", { n: day });
   return new Date(iso).toLocaleDateString();
 }

@@ -25,5 +25,7 @@ class ChatMessage(BaseModel):
     content: Mapped[str] = mapped_column(Text)
     # For assistant turns: the structured suggestion cards, stored as JSON.
     suggestions: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
+    # For user turns: plan items attached by drag-and-drop, stored as JSON.
+    attachments: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
 
     conversation: Mapped[Conversation] = relationship(back_populates="messages")

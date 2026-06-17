@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { planningApi, type YearlyGoal } from "@/lib/api";
+import { setChatDragItem } from "@/lib/dragItem";
 
 const STATUS_VARIANT = {
   active: "default",
@@ -85,7 +86,18 @@ export function YearView() {
             <p className="text-sm text-muted-foreground">No goals set for {year}.</p>
           )}
           {goals.map((goal) => (
-            <div key={goal.id} className="group flex items-start gap-3 rounded-md border px-3 py-3">
+            <div
+              key={goal.id}
+              draggable
+              onDragStart={(e) =>
+                setChatDragItem(e, {
+                  kind: "yearly",
+                  title: goal.title,
+                  description: goal.description,
+                })
+              }
+              className="group flex items-start gap-3 rounded-md border px-3 py-3"
+            >
               <div className="flex-1 min-w-0">
                 {editingId === goal.id ? (
                   <div className="flex items-center gap-2">

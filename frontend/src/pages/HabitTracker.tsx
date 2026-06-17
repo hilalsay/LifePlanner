@@ -5,8 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { habitsApi, type Habit, type HabitEntry } from "@/lib/api";
 import { toDateString } from "@/lib/utils";
+import { setChatDragItem } from "@/lib/dragItem";
+import { useI18n } from "@/contexts/LanguageContext";
+import { dateLocale } from "@/lib/dateLocale";
 
 export function HabitTracker() {
+  const { t, lang } = useI18n();
+  const locale = dateLocale(lang);
   const [habits, setHabits] = useState<Habit[]>([]);
   const [entries, setEntries] = useState<HabitEntry[]>([]);
   const [streaks, setStreaks] = useState<Record<string, number>>({});
@@ -67,19 +72,19 @@ export function HabitTracker() {
     <div className="mx-auto max-w-3xl space-y-4">
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Habit Tracker — Last 7 Days</CardTitle>
+          <CardTitle className="text-base">{t("habits.trackerTitle")}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr>
-                  <th className="pb-2 text-left font-medium text-muted-foreground">Habit</th>
+                  <th className="pb-2 text-left font-medium text-muted-foreground">{t("habits.habitCol")}</th>
                   {days.map((d) => (
                     <th key={d} className="pb-2 text-center text-xs font-medium text-muted-foreground">
-                      {format(new Date(d + "T00:00:00"), "EEE")}
+                      {format(new Date(d + "T00:00:00"), "EEE", { locale })}
                       <br />
-                      <span className="text-xs">{format(new Date(d + "T00:00:00"), "d")}</span>
+                      <span className="text-xs">{format(new Date(d + "T00:00:00"), "d", { locale })}</span>
                     </th>
                   ))}
                   <th className="pb-2 text-center text-xs font-medium text-muted-foreground">
@@ -91,7 +96,18 @@ export function HabitTracker() {
                 {habits.map((habit) => (
                   <tr key={habit.id}>
                     <td className="py-2 pr-4 font-medium">
-                      <div className="flex items-center gap-2">
+                      <div
+                        draggable
+                        onDragStart={(e) =>
+                          setChatDragItem(e, {
+                            kind: "habit",
+                            title: habit.name,
+                            description: habit.description,
+                          })
+                        }
+                        className="flex cursor-grab items-center gap-2 active:cursor-grabbing"
+                        title={t("habits.dragHint")}
+                      >
                         <div
                           className="h-2.5 w-2.5 rounded-full"
                           style={{ backgroundColor: habit.color }}
@@ -134,7 +150,7 @@ export function HabitTracker() {
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addHabit()}
-              placeholder="Add a habit..."
+              placeholder={t("habits.addPlaceholder")}
               className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
             <Button size="sm" onClick={addHabit}>

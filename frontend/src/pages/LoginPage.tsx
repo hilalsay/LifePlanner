@@ -3,10 +3,13 @@ import { Link } from "react-router-dom";
 import { Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { useAuth } from "@/contexts/AuthContext";
+import { useI18n } from "@/contexts/LanguageContext";
 
 export function LoginPage() {
   const { login } = useAuth();
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -16,8 +19,9 @@ export function LoginPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("error") === "oauth_failed") {
-      setError("OAuth sign-in failed. Please try again.");
+      setError(t("auth.oauthFailed"));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleSubmit(e: FormEvent) {
@@ -28,23 +32,26 @@ export function LoginPage() {
       await login(email, password);
       window.location.href = "/";
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign in failed");
+      setError(err instanceof Error ? err.message : t("auth.signInFailed"));
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="relative flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="absolute right-4 top-4">
+        <LanguageToggle />
+      </div>
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 pb-4">
           <div className="flex items-center justify-center gap-2 mb-2">
             <Sparkles className="h-6 w-6 text-primary" />
             <span className="text-xl font-bold tracking-tight">Life Planner</span>
           </div>
-          <CardTitle className="text-center text-2xl">Sign in</CardTitle>
+          <CardTitle className="text-center text-2xl">{t("auth.signIn")}</CardTitle>
           <p className="text-center text-sm text-muted-foreground">
-            Welcome back — enter your credentials to continue
+            {t("auth.signInSubtitle")}
           </p>
         </CardHeader>
 
@@ -58,7 +65,7 @@ export function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-3">
             <div className="space-y-1">
               <label htmlFor="email" className="text-sm font-medium">
-                Email
+                {t("auth.email")}
               </label>
               <input
                 id="email"
@@ -74,7 +81,7 @@ export function LoginPage() {
 
             <div className="space-y-1">
               <label htmlFor="password" className="text-sm font-medium">
-                Password
+                {t("auth.password")}
               </label>
               <input
                 id="password"
@@ -89,7 +96,7 @@ export function LoginPage() {
             </div>
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Signing in…" : "Sign in"}
+              {isSubmitting ? t("auth.signingIn") : t("auth.signIn")}
             </Button>
           </form>
 
@@ -98,7 +105,7 @@ export function LoginPage() {
               <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">or continue with</span>
+              <span className="bg-card px-2 text-muted-foreground">{t("auth.orContinueWith")}</span>
             </div>
           </div>
 
@@ -144,9 +151,9 @@ export function LoginPage() {
           </div>
 
           <p className="text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
+            {t("auth.noAccount")}{" "}
             <Link to="/register" className="font-medium text-primary hover:underline">
-              Sign up
+              {t("auth.signUpLink")}
             </Link>
           </p>
         </CardContent>
