@@ -3,6 +3,7 @@ from app.models.planning import LifeArea, YearlyGoal, MonthlyFocus, WeeklyPriori
 from app.models.habits import Habit, HabitEntry
 from app.models.tracking import MoodEntry, HealthEntry, BookEntry, WeeklyAIReview
 from app.models.user import User
+from app.models.chat import Conversation, ChatMessage
 
 __all__ = [
     "Base",
@@ -20,4 +21,6 @@ __all__ = [
     "BookEntry",
     "WeeklyAIReview",
     "User",
+    "Conversation",
+    "ChatMessage",
 ]

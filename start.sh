@@ -99,7 +99,7 @@ fi
 log "PostgreSQL is ready."
 
 # ── Migrations (picks up new ones after a git pull) ───────────────────────────
-(cd "$BACKEND_DIR" && "$VENV/bin/alembic" upgrade head -q) || { echo -e "${RED}[✗]${NC} Migration failed." >&2; exit 1; }
+(cd "$BACKEND_DIR" && "$VENV/bin/alembic" upgrade head) || { echo -e "${RED}[✗]${NC} Migration failed." >&2; exit 1; }
 log "Database schema up to date."
 
 # ── Backend ───────────────────────────────────────────────────────────────────

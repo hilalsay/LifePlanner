@@ -180,7 +180,48 @@ export const aiApi = {
     request<WeeklyAIReview>("/ai/weekly-review", { method: "POST", body: JSON.stringify({}) }),
   getWeeklyReviews: () =>
     request<WeeklyAIReview[]>("/ai/weekly-reviews"),
+  chat: (content: string, conversationId?: string) =>
+    request<ChatResponse>("/ai/chat", {
+      method: "POST",
+      body: JSON.stringify({ content, conversation_id: conversationId ?? null }),
+    }),
+  listConversations: () => request<Conversation[]>("/ai/conversations"),
+  getConversation: (id: string) => request<ConversationDetail>(`/ai/conversations/${id}`),
+  deleteConversation: (id: string) =>
+    request<void>(`/ai/conversations/${id}`, { method: "DELETE" }),
 };
+
+export interface ChatSuggestion {
+  kind: "monthly" | "weekly" | "habit" | "task";
+  title: string;
+  description?: string | null;
+}
+
+export interface ChatResponse {
+  conversation_id: string;
+  title: string;
+  message: string;
+  suggestions: ChatSuggestion[];
+}
+
+export interface Conversation {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoredChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  suggestions?: ChatSuggestion[] | null;
+  created_at: string;
+}
+
+export interface ConversationDetail extends Conversation {
+  messages: StoredChatMessage[];
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

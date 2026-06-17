@@ -8,6 +8,7 @@ __pycache__/
 *.pyo
 .venv/
 venv/
+backendenv/
 dist/
 *.egg-info/
 .pytest_cache/
@@ -26,6 +27,13 @@ dist/
 .DS_Store
 Thumbs.db
 .logs/
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+docs/build*.log
 
 # Claude
 .claude/settings.local.json
