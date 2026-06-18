@@ -8,6 +8,7 @@ class ChatSuggestion(BaseModel):
     kind: str
     title: str
     description: Optional[str] = None
+    date: Optional[str] = None  # YYYY-MM-DD, tasks only
 
 
 class ChatAttachment(BaseModel):

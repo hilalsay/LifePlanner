@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "@/components/layout/Layout";
@@ -18,6 +19,7 @@ import { SettingsPage } from "@/pages/SettingsPage";
 export default function App() {
   return (
     <LanguageProvider>
+      <PreferencesProvider>
       <AuthProvider>
         <BrowserRouter>
         <Routes>
@@ -39,6 +41,7 @@ export default function App() {
         </Routes>
         </BrowserRouter>
       </AuthProvider>
+      </PreferencesProvider>
     </LanguageProvider>
   );
 }

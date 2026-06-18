@@ -9,6 +9,8 @@ export interface Suggestion {
   kind: SuggestionKind;
   title: string;
   description?: string;
+  completed?: boolean;
+  date?: string; // YYYY-MM-DD, tasks only
 }
 
 export interface ChatMessage {

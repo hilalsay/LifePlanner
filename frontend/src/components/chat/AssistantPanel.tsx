@@ -18,11 +18,14 @@ import {
   Target,
   Paperclip,
 } from "lucide-react";
+import { format, parseISO } from "date-fns";
 import { cn, getISOWeek, toDateString } from "@/lib/utils";
+import { dateLocale } from "@/lib/dateLocale";
 import { Button } from "@/components/ui/button";
 import { aiApi, planningApi, habitsApi, type Conversation } from "@/lib/api";
 import { hasChatDragItem, readChatDragItem, type DragItem, type DragItemKind } from "@/lib/dragItem";
 import { useI18n } from "@/contexts/LanguageContext";
+import { usePreferences } from "@/contexts/PreferencesContext";
 import {
   uid,
   type ChatMessage,
@@ -76,6 +79,7 @@ const COOLDOWN_SECONDS = 3;
 
 export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
   const { t, lang } = useI18n();
+  const { hideCompleted } = usePreferences();
   const makeGreeting = (): ChatMessage => ({
     id: "greeting",
     role: "assistant",
@@ -99,6 +103,7 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
   const [showHistory, setShowHistory] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [attachments, setAttachments] = useState<DragItem[]>([]);
+  const [showPicker, setShowPicker] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -135,9 +140,9 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
         ]);
         setPlan([
           ...focuses.map((f) => ({ id: uid("plan"), kind: "monthly" as const, title: f.title, description: f.description })),
-          ...priorities.map((p) => ({ id: uid("plan"), kind: "weekly" as const, title: p.title, description: p.description })),
+          ...priorities.map((p) => ({ id: uid("plan"), kind: "weekly" as const, title: p.title, description: p.description, completed: p.is_completed })),
           ...habits.map((h) => ({ id: uid("plan"), kind: "habit" as const, title: h.name, description: h.description })),
-          ...tasks.map((t) => ({ id: uid("plan"), kind: "task" as const, title: t.title, description: t.description })),
+          ...tasks.map((dt) => ({ id: uid("plan"), kind: "task" as const, title: dt.title, description: dt.description, completed: dt.is_completed })),
         ]);
       } catch {
         /* leave plan empty on failure */
@@ -174,6 +179,7 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
     setCurrentId(null);
     setAddedIds(new Set());
     setAttachments([]);
+    setShowPicker(false);
     setShowHistory(false);
     setTab("chat");
   };
@@ -238,6 +244,7 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
         kind: s.kind as SuggestionKind,
         title: s.title,
         description: s.description ?? undefined,
+        date: s.date ?? undefined,
       }));
       setMessages((m) => [
         ...m,
@@ -280,6 +287,15 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
   const removeAttachment = (idx: number) =>
     setAttachments((prev) => prev.filter((_, i) => i !== idx));
 
+  // Toggle an item from the plan-item picker (tap to attach/detach).
+  const toggleAttachment = (item: DragItem) => {
+    setAttachments((prev) =>
+      prev.some((a) => a.kind === item.kind && a.title === item.title)
+        ? prev.filter((a) => !(a.kind === item.kind && a.title === item.title))
+        : [...prev, item]
+    );
+  };
+
   // Persist an accepted suggestion as the matching planner entity.
   const persist = async (s: Suggestion) => {
     const now = new Date();
@@ -310,7 +326,7 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
         break;
       case "task":
         await planningApi.createDailyTask({
-          task_date: toDateString(now),
+          task_date: s.date || toDateString(now),
           title: s.title,
           description: s.description,
           priority: "medium",
@@ -416,19 +432,28 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
 
         {tab === "chat" ? (
           <>
-            {/* Messages */}
-            <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-4">
-              {messages.map((m) => (
-                <MessageBubble
-                  key={m.id}
-                  message={m}
-                  addedIds={addedIds}
-                  savingId={savingId}
-                  onAdd={addSuggestion}
-                />
-              ))}
-              {thinking && <TypingIndicator />}
-            </div>
+            {/* Messages, or the attachment picker when open */}
+            {showPicker ? (
+              <AttachmentPicker
+                plan={hideCompleted ? plan.filter((p) => !p.completed) : plan}
+                attachments={attachments}
+                onToggle={toggleAttachment}
+                onClose={() => setShowPicker(false)}
+              />
+            ) : (
+              <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-4">
+                {messages.map((m) => (
+                  <MessageBubble
+                    key={m.id}
+                    message={m}
+                    addedIds={addedIds}
+                    savingId={savingId}
+                    onAdd={addSuggestion}
+                  />
+                ))}
+                {thinking && <TypingIndicator />}
+              </div>
+            )}
 
             {/* Composer — extra bottom padding clears the mobile bottom nav (h-16) */}
             <div className="border-t px-3 pt-3 pb-20 md:pb-3">
@@ -440,6 +465,15 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
                 </div>
               )}
               <div className="flex items-end gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowPicker((v) => !v)}
+                  title={t("assistant.attachTooltip")}
+                  className={cn("shrink-0", showPicker && "bg-primary/10 text-primary")}
+                >
+                  <Paperclip className="h-4 w-4" />
+                </Button>
                 <textarea
                   ref={inputRef}
                   value={input}
@@ -566,7 +600,7 @@ function SuggestionCard({
   saving: boolean;
   onAdd: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const meta = KIND_META[suggestion.kind];
   const Icon = meta.icon;
   return (
@@ -575,6 +609,11 @@ function SuggestionCard({
       <div className="min-w-0 flex-1">
         <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           {t(`kind.${suggestion.kind}`)}
+          {suggestion.date && (
+            <span className="ml-1.5 normal-case text-primary">
+              · {format(parseISO(suggestion.date), "EEE, MMM d", { locale: dateLocale(lang) })}
+            </span>
+          )}
         </div>
         <div className="truncate text-sm font-medium">{suggestion.title}</div>
         {suggestion.description && (
@@ -643,6 +682,79 @@ function PlanTab({ plan }: { plan: Suggestion[] }) {
           );
         })
       )}
+    </div>
+  );
+}
+
+function AttachmentPicker({
+  plan,
+  attachments,
+  onToggle,
+  onClose,
+}: {
+  plan: Suggestion[];
+  attachments: DragItem[];
+  onToggle: (item: DragItem) => void;
+  onClose: () => void;
+}) {
+  const { t } = useI18n();
+  const order: SuggestionKind[] = ["monthly", "weekly", "habit", "task"];
+  const groups = order
+    .map((kind) => ({ kind, items: plan.filter((p) => p.kind === kind) }))
+    .filter((g) => g.items.length > 0);
+
+  const isAttached = (item: Suggestion) =>
+    attachments.some((a) => a.kind === item.kind && a.title === item.title);
+
+  return (
+    <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex h-11 items-center justify-between border-b px-3">
+        <span className="text-sm font-medium">{t("assistant.attachTitle")}</span>
+        <Button variant="ghost" size="sm" onClick={onClose}>{t("assistant.done")}</Button>
+      </div>
+      <div className="flex-1 space-y-4 overflow-y-auto p-4">
+        {plan.length === 0 ? (
+          <p className="pt-6 text-center text-sm text-muted-foreground">{t("assistant.noPlanItems")}</p>
+        ) : (
+          groups.map((g) => {
+            const meta = KIND_META[g.kind];
+            const Icon = meta.icon;
+            return (
+              <div key={g.kind}>
+                <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <Icon className={cn("h-3.5 w-3.5", meta.className)} />
+                  {t(`kind.${g.kind}`)}
+                </div>
+                <ul className="space-y-1.5">
+                  {g.items.map((item) => {
+                    const on = isAttached(item);
+                    return (
+                      <li key={item.id}>
+                        <button
+                          onClick={() =>
+                            onToggle({ kind: item.kind, title: item.title, description: item.description })
+                          }
+                          className={cn(
+                            "flex min-h-[44px] w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors",
+                            on ? "border-primary bg-primary/5" : "hover:bg-accent"
+                          )}
+                        >
+                          <span className="flex-1 truncate text-sm">{item.title}</span>
+                          {on ? (
+                            <Check className="h-4 w-4 shrink-0 text-primary" />
+                          ) : (
+                            <Plus className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }

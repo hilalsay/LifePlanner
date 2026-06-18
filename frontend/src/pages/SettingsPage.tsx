@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/useTheme";
 import { useI18n } from "@/contexts/LanguageContext";
+import { usePreferences } from "@/contexts/PreferencesContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { dateLocale } from "@/lib/dateLocale";
 import { type Lang } from "@/lib/i18n";
@@ -13,6 +14,7 @@ import { format } from "date-fns";
 export function SettingsPage() {
   const { theme, toggle } = useTheme();
   const { t, lang, setLang } = useI18n();
+  const { hideCompleted, setHideCompleted } = usePreferences();
   const { user, logout, updateProfile, uploadAvatar } = useAuth();
 
   const [displayName, setDisplayName] = useState(user?.display_name ?? "");
@@ -196,6 +198,38 @@ export function SettingsPage() {
               )}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Assistant */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">{t("settings.assistant")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <button
+            type="button"
+            onClick={() => setHideCompleted(!hideCompleted)}
+            className="flex w-full items-center justify-between gap-3 text-left"
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-medium">{t("settings.hideCompleted")}</p>
+              <p className="text-xs text-muted-foreground">{t("settings.hideCompletedHint")}</p>
+            </div>
+            <span
+              className={cn(
+                "relative h-6 w-11 shrink-0 rounded-full transition-colors",
+                hideCompleted ? "bg-primary" : "bg-muted-foreground/30"
+              )}
+            >
+              <span
+                className={cn(
+                  "absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform",
+                  hideCompleted ? "translate-x-[22px]" : "translate-x-0.5"
+                )}
+              />
+            </span>
+          </button>
         </CardContent>
       </Card>
 

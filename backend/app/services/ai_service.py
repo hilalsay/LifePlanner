@@ -101,7 +101,11 @@ _LANG_NAME = {"en": "English", "tr": "Turkish"}
 
 
 def _build_chat_system_instruction(ctx: dict, language: str = "en") -> str:
+    from datetime import date
     lang_name = _LANG_NAME.get(language, "English")
+    today = date.today()
+    today_str = today.isoformat()
+    weekday = today.strftime("%A")
     return f"""You are the planning assistant inside "Life Planner", a personal goal app.
 
 Always write the "message" field in {lang_name}, regardless of the language the user writes in. Suggestion "kind" values stay in English (monthly/weekly/habit/task), but titles and descriptions should be in {lang_name}.
@@ -110,7 +114,13 @@ trackable items that fit the app's hierarchy:
 - "monthly": a Monthly Focus — a theme/objective for the whole month
 - "weekly":  a Weekly Priority — one concrete win for this week
 - "habit":   a repeatable daily/weekly Habit
-- "task":    a single Daily Task for today
+- "task":    a single Daily Task (today by default, or a specific day)
+
+Today is {weekday}, {today_str}. For "task" suggestions you MAY include a "date"
+field in YYYY-MM-DD format when the user asks for or implies a specific day
+(e.g. "tomorrow", "this Friday", "next Monday"). Resolve such phrases to an actual
+date relative to today. Omit "date" (or use today) for tasks meant for today.
+Only "task" items use "date"; never add it to monthly/weekly/habit.
 
 The user's current plan (build on these; do NOT duplicate them):
 - Monthly focuses: {ctx.get('monthly') or 'none'}
@@ -130,11 +140,12 @@ You are a normal conversational partner first. Hold a real conversation:
 you have nothing concrete to add.
 
 Respond with JSON ONLY, matching exactly this shape:
-{{"message": "<conversational reply>", "suggestions": [{{"kind": "monthly|weekly|habit|task", "title": "<short title>", "description": "<one short sentence>"}}]}}
+{{"message": "<conversational reply>", "suggestions": [{{"kind": "monthly|weekly|habit|task", "title": "<short title>", "description": "<one short sentence>", "date": "YYYY-MM-DD (optional, task only)"}}]}}
 
 Examples:
 - User "hi" -> {{"message": "Hi! What would you like to work on today?", "suggestions": []}}
-- User "help me get fit" -> {{"message": "Love it — let's make it stick:", "suggestions": [{{"kind": "habit", "title": "Walk 30 min daily", "description": "A simple daily activity habit."}}]}}"""
+- User "help me get fit" -> {{"message": "Love it — let's make it stick:", "suggestions": [{{"kind": "habit", "title": "Walk 30 min daily", "description": "A simple daily activity habit."}}]}}
+- User "remind me to call the dentist tomorrow" -> {{"message": "Added for tomorrow:", "suggestions": [{{"kind": "task", "title": "Call the dentist", "description": "Scheduled for tomorrow.", "date": "<tomorrow's date>"}}]}}"""
 
 
 async def chat_with_assistant(messages: list[dict], ctx: dict, language: str = "en") -> dict:
@@ -147,6 +158,7 @@ async def chat_with_assistant(messages: list[dict], ctx: dict, language: str = "
         }
 
     import json
+    import re
     import google.generativeai as genai
 
     genai.configure(api_key=settings.gemini_api_key)
@@ -208,6 +220,12 @@ async def chat_with_assistant(messages: list[dict], ctx: dict, language: str = "
             title = str(s.get("title", "")).strip()
             if kind in ALLOWED_KINDS and title:
                 desc = str(s.get("description", "")).strip()
-                suggestions.append({"kind": kind, "title": title, "description": desc or None})
+                item = {"kind": kind, "title": title, "description": desc or None}
+                # Only tasks may carry a scheduled date (validated YYYY-MM-DD).
+                if kind == "task":
+                    raw_date = str(s.get("date", "")).strip()
+                    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw_date):
+                        item["date"] = raw_date
+                suggestions.append(item)
 
     return {"message": message, "suggestions": suggestions}

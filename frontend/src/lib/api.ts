@@ -212,6 +212,7 @@ export interface ChatSuggestion {
   kind: "monthly" | "weekly" | "habit" | "task";
   title: string;
   description?: string | null;
+  date?: string | null; // YYYY-MM-DD, tasks only
 }
 
 export interface ChatResponse {

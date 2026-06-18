@@ -58,6 +58,10 @@ const en: Dict = {
   "assistant.deleteConversation": "Delete conversation",
   "assistant.planEmpty": "Nothing added yet. Switch to Chat and add a suggestion.",
   "assistant.removeAttachment": "Remove attachment",
+  "assistant.attachTooltip": "Attach from your plan",
+  "assistant.attachTitle": "Attach from your plan",
+  "assistant.noPlanItems": "Nothing in your plan to attach yet.",
+  "assistant.done": "Done",
 
   // Suggestions
   "suggestion.add": "Add",
@@ -261,6 +265,9 @@ const en: Dict = {
   "settings.signedInWith": "Signed in with {provider}",
   "settings.memberSince": "Member since {date}",
   "settings.displayNameHint": "Shown across the app.",
+  "settings.assistant": "Assistant",
+  "settings.hideCompleted": "Hide completed tasks",
+  "settings.hideCompletedHint": "Don't show finished tasks when attaching to the assistant.",
   "settings.uploadPhoto": "Upload photo",
   "settings.changePhoto": "Change photo",
   "settings.removePhoto": "Remove",
@@ -349,6 +356,10 @@ const tr: Dict = {
   "assistant.deleteConversation": "Sohbeti sil",
   "assistant.planEmpty": "Henüz bir şey eklenmedi. Sohbete geçip bir öneri ekle.",
   "assistant.removeAttachment": "Eki kaldır",
+  "assistant.attachTooltip": "Planından ekle",
+  "assistant.attachTitle": "Planından ekle",
+  "assistant.noPlanItems": "Eklenecek bir öğe yok.",
+  "assistant.done": "Tamam",
 
   // Suggestions
   "suggestion.add": "Ekle",
@@ -552,6 +563,9 @@ const tr: Dict = {
   "settings.signedInWith": "{provider} ile giriş yapıldı",
   "settings.memberSince": "Üyelik tarihi: {date}",
   "settings.displayNameHint": "Uygulama genelinde görünür.",
+  "settings.assistant": "Asistan",
+  "settings.hideCompleted": "Tamamlanan görevleri gizle",
+  "settings.hideCompletedHint": "Asistana eklerken tamamlanmış görevleri gösterme.",
   "settings.uploadPhoto": "Fotoğraf yükle",
   "settings.changePhoto": "Fotoğrafı değiştir",
   "settings.removePhoto": "Kaldır",
