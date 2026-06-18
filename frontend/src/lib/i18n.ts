@@ -19,6 +19,7 @@ const en: Dict = {
   "nav.overview": "Overview",
   "nav.settings": "Settings",
   "nav.signOut": "Sign out",
+  "nav.menu": "Menu",
 
   // Page titles (TopBar)
   "title./": "Today",
@@ -309,6 +310,7 @@ const tr: Dict = {
   "nav.overview": "Genel Bakış",
   "nav.settings": "Ayarlar",
   "nav.signOut": "Çıkış yap",
+  "nav.menu": "Menü",
 
   // Page titles
   "title./": "Bugün",
