@@ -3,6 +3,16 @@ import type { DragItem } from "./dragItem";
 const BASE = "/api/v1";
 
 let isRefreshing = false;
+let sessionExpiredNotified = false;
+
+// Signal an unrecoverable auth failure (access token expired AND refresh failed).
+// AuthContext listens for this and performs a clean logout.
+export const SESSION_EXPIRED_EVENT = "auth:session-expired";
+function notifySessionExpired() {
+  if (sessionExpiredNotified) return;
+  sessionExpiredNotified = true;
+  window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
@@ -30,7 +40,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     } finally {
       isRefreshing = false;
     }
-    window.location.href = "/login";
+    notifySessionExpired();
     throw new Error("Session expired");
   }
   if (!res.ok) {

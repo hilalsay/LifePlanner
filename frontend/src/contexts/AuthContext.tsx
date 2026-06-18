@@ -2,9 +2,11 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { SESSION_EXPIRED_EVENT } from "@/lib/api";
 
 export interface User {
   id: string;
@@ -71,6 +73,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  // Auto-logout when an API call reports the session can't be refreshed.
+  const logoutRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    const handler = () => logoutRef.current();
+    window.addEventListener(SESSION_EXPIRED_EVENT, handler);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handler);
   }, []);
 
   async function login(email: string, password: string): Promise<void> {
@@ -153,6 +163,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     window.location.href = "/login";
   }
+
+  // Keep the event handler pointed at the latest logout.
+  logoutRef.current = logout;
 
   return (
     <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateProfile, uploadAvatar }}>
