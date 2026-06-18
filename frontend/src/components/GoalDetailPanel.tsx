@@ -3,8 +3,10 @@ import { X, Plus, Trash2, Calendar, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { planningApi, type YearlyGoal, type LifeArea, type MonthlyFocus } from "@/lib/api";
+import { useI18n } from "@/contexts/LanguageContext";
+import { dateLocale } from "@/lib/dateLocale";
+import { format } from "date-fns";
 
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const STATUS_OPTIONS = ["active", "completed", "abandoned"] as const;
 
 const STATUS_COLORS: Record<string, string> = {
@@ -21,6 +23,9 @@ interface Props {
 }
 
 export function GoalDetailPanel({ goal, areas, onClose, onUpdate }: Props) {
+  const { t, lang } = useI18n();
+  const locale = dateLocale(lang);
+  const MONTHS = Array.from({ length: 12 }, (_, i) => format(new Date(2020, i, 1), "MMM", { locale }));
   const [title, setTitle] = useState(goal.title);
   const [description, setDescription] = useState(goal.description ?? "");
   const [progress, setProgress] = useState(goal.progress);
@@ -118,7 +123,7 @@ export function GoalDetailPanel({ goal, areas, onClose, onUpdate }: Props) {
           <div className="flex items-center gap-2 shrink-0">
             {dirty && (
               <Button size="sm" onClick={save} disabled={saving}>
-                {saving ? "Saving…" : "Save"}
+                {saving ? t("common.saving") : t("common.save")}
               </Button>
             )}
             <button
@@ -135,7 +140,7 @@ export function GoalDetailPanel({ goal, areas, onClose, onUpdate }: Props) {
 
           {/* Title */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Title</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("goalDetail.titleLabel")}</label>
             <input
               type="text"
               value={title}
@@ -146,12 +151,12 @@ export function GoalDetailPanel({ goal, areas, onClose, onUpdate }: Props) {
 
           {/* Description */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Notes</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("goalDetail.notes")}</label>
             <textarea
               value={description}
               onChange={(e) => { setDescription(e.target.value); mark(); }}
               rows={3}
-              placeholder="What does achieving this look like? Why does it matter?"
+              placeholder={t("goalDetail.notesPlaceholder")}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring resize-none"
             />
           </div>
@@ -160,7 +165,7 @@ export function GoalDetailPanel({ goal, areas, onClose, onUpdate }: Props) {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                <TrendingUp className="h-3 w-3" /> Progress
+                <TrendingUp className="h-3 w-3" /> {t("goalDetail.progress")}
               </label>
               <span className="text-sm font-bold tabular-nums">{progressRounded}%</span>
             </div>
@@ -184,7 +189,7 @@ export function GoalDetailPanel({ goal, areas, onClose, onUpdate }: Props) {
           {/* Status & Target Date */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Status</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("goalDetail.status")}</label>
               <select
                 value={status}
                 onChange={(e) => { setStatus(e.target.value); mark(); }}
@@ -192,14 +197,14 @@ export function GoalDetailPanel({ goal, areas, onClose, onUpdate }: Props) {
               >
                 {STATUS_OPTIONS.map((s) => (
                   <option key={s} value={s}>
-                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                    {t(`status.${s}`)}
                   </option>
                 ))}
               </select>
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                <Calendar className="h-3 w-3" /> Target Date
+                <Calendar className="h-3 w-3" /> {t("goalDetail.targetDate")}
               </label>
               <input
                 type="date"
@@ -212,13 +217,13 @@ export function GoalDetailPanel({ goal, areas, onClose, onUpdate }: Props) {
 
           {/* Life Area */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Life Area</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("goalDetail.lifeArea")}</label>
             <select
               value={areaId}
               onChange={(e) => { setAreaId(e.target.value); mark(); }}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
             >
-              <option value="">— None —</option>
+              <option value="">{t("common.none")}</option>
               {areas.map((a) => (
                 <option key={a.id} value={a.id}>{a.name}</option>
               ))}
@@ -228,11 +233,11 @@ export function GoalDetailPanel({ goal, areas, onClose, onUpdate }: Props) {
           {/* Status badge preview */}
           <div className="flex items-center gap-2">
             <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[status] ?? "text-muted-foreground"}`}>
-              {status}
+              {t(`status.${status}`)}
             </span>
             {deadline && (
               <span className="text-xs text-muted-foreground">
-                Target: {new Date(deadline + "T00:00:00").toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+                {t("goalDetail.target", { date: new Date(deadline + "T00:00:00").toLocaleDateString(lang === "tr" ? "tr-TR" : undefined, { year: "numeric", month: "short", day: "numeric" }) })}
               </span>
             )}
           </div>
@@ -242,14 +247,14 @@ export function GoalDetailPanel({ goal, areas, onClose, onUpdate }: Props) {
           {/* Monthly Milestones */}
           <div className="space-y-3">
             <div>
-              <h4 className="text-sm font-semibold">Monthly Milestones</h4>
+              <h4 className="text-sm font-semibold">{t("goalDetail.milestones")}</h4>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Break this goal into monthly steps. Each milestone links to your Month view.
+                {t("goalDetail.milestonesHelp")}
               </p>
             </div>
 
             {focuses.length === 0 ? (
-              <p className="text-xs text-muted-foreground italic">No milestones yet — add one below.</p>
+              <p className="text-xs text-muted-foreground italic">{t("goalDetail.noMilestones")}</p>
             ) : (
               <div className="space-y-2">
                 {focuses.map((f) => (
@@ -279,7 +284,7 @@ export function GoalDetailPanel({ goal, areas, onClose, onUpdate }: Props) {
 
             {/* Add milestone */}
             <div className="rounded-md border border-dashed p-3 space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">Add milestone</p>
+              <p className="text-xs font-medium text-muted-foreground">{t("goalDetail.addMilestone")}</p>
               <div className="flex gap-2">
                 <select
                   value={newFocusMonth}
@@ -304,7 +309,7 @@ export function GoalDetailPanel({ goal, areas, onClose, onUpdate }: Props) {
                   value={newFocusTitle}
                   onChange={(e) => setNewFocusTitle(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addFocus()}
-                  placeholder="Milestone title..."
+                  placeholder={t("goalDetail.milestonePlaceholder")}
                   className="flex-1 min-w-0 rounded-md border bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
                 />
                 <Button size="sm" variant="outline" onClick={addFocus} className="shrink-0">

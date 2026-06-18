@@ -6,8 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { GoalDetailPanel } from "@/components/GoalDetailPanel";
 import { AreaCard, AREA_COLORS } from "@/components/AreaCard";
 import { planningApi, type LifeArea, type YearlyGoal } from "@/lib/api";
+import { useI18n } from "@/contexts/LanguageContext";
 
 export function VisionBoard() {
+  const { t } = useI18n();
   const [areas, setAreas] = useState<LifeArea[]>([]);
   const [goals, setGoals] = useState<YearlyGoal[]>([]);
   const [newAreaName, setNewAreaName] = useState("");
@@ -100,7 +102,7 @@ export function VisionBoard() {
       <div className="mx-auto max-w-4xl space-y-6">
         <div className="flex items-center gap-2">
           <Target className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-semibold">Life Vision — {year}</h2>
+          <h2 className="text-lg font-semibold">{t("vision.title", { year })}</h2>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -124,7 +126,7 @@ export function VisionBoard() {
                   value={newAreaName}
                   onChange={(e) => setNewAreaName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addArea()}
-                  placeholder="New life area..."
+                  placeholder={t("vision.newAreaPlaceholder")}
                   className="w-32 rounded-md border bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
                 />
                 <Button size="sm" variant="outline" onClick={addArea}>
@@ -139,11 +141,11 @@ export function VisionBoard() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">
-                {selectedArea ? `Goals — ${selectedAreaName}` : `All Goals — ${year}`}
+                {selectedArea ? t("vision.goalsForArea", { name: selectedAreaName ?? "" }) : t("vision.allGoals", { year })}
               </CardTitle>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground">
-                  {visibleGoals.filter((g) => g.status === "completed").length} / {visibleGoals.length} completed
+                  {t("common.completedCount", { done: visibleGoals.filter((g) => g.status === "completed").length, total: visibleGoals.length })}
                 </span>
                 {selectedArea && (
                   <Badge
@@ -151,7 +153,7 @@ export function VisionBoard() {
                     className="cursor-pointer"
                     onClick={() => setSelectedArea(null)}
                   >
-                    Clear filter
+                    {t("vision.clearFilter")}
                   </Badge>
                 )}
               </div>
@@ -225,12 +227,12 @@ export function VisionBoard() {
                           </button>
                         </div>
                         <Badge variant={g.status === "completed" ? "secondary" : "outline"} className="text-xs">
-                          {g.status}
+                          {t(`status.${g.status}`)}
                         </Badge>
                         <button
                           onClick={() => setDetailGoal(g)}
                           className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                          title="View details"
+                          title={t("vision.viewDetails")}
                         >
                           <ChevronRight className="h-4 w-4" />
                         </button>
@@ -247,7 +249,7 @@ export function VisionBoard() {
                 value={newGoalTitle}
                 onChange={(e) => setNewGoalTitle(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addGoal()}
-                placeholder={selectedArea ? `Add goal to ${selectedAreaName}...` : "Add a goal..."}
+                placeholder={selectedArea ? t("vision.addGoalToArea", { name: selectedAreaName ?? "" }) : t("vision.addGoalPlaceholder")}
                 className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
               <Button size="sm" onClick={addGoal}>

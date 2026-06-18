@@ -5,10 +5,14 @@ import { Button } from "@/components/ui/button";
 import { trackingApi, type MoodEntry, type HealthEntry, type BookEntry } from "@/lib/api";
 import { toDateString } from "@/lib/utils";
 import { format, subDays } from "date-fns";
+import { useI18n } from "@/contexts/LanguageContext";
+import { dateLocale } from "@/lib/dateLocale";
 
 const MOOD_EMOJIS = ["", "😞", "😔", "😐", "🙂", "😊", "😄", "😁", "🤩", "🥳", "🌟"];
 
 export function TrackingPage() {
+  const { t, lang } = useI18n();
+  const locale = dateLocale(lang);
   const [tab, setTab] = useState<"mood" | "health" | "books">("mood");
   const [mood, setMood] = useState<MoodEntry | null>(null);
   const [moodHistory, setMoodHistory] = useState<MoodEntry[]>([]);
@@ -105,18 +109,18 @@ export function TrackingPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <div className="flex gap-2 rounded-lg border p-1">
-        {(["mood", "health", "books"] as const).map((t) => (
+        {(["mood", "health", "books"] as const).map((tk) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={tk}
+            onClick={() => setTab(tk)}
             className={`flex flex-1 items-center justify-center gap-2 rounded-md py-2 text-sm font-medium transition-colors ${
-              tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+              tab === tk ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            {t === "mood" && <Heart className="h-4 w-4" />}
-            {t === "health" && <Activity className="h-4 w-4" />}
-            {t === "books" && <BookOpen className="h-4 w-4" />}
-            {t.charAt(0).toUpperCase() + t.slice(1)}
+            {tk === "mood" && <Heart className="h-4 w-4" />}
+            {tk === "health" && <Activity className="h-4 w-4" />}
+            {tk === "books" && <BookOpen className="h-4 w-4" />}
+            {tk === "mood" ? t("tracking.tabMood") : tk === "health" ? t("tracking.tabHealth") : t("tracking.tabBooks")}
           </button>
         ))}
       </div>
@@ -125,12 +129,12 @@ export function TrackingPage() {
         <>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Today's Mood</CardTitle>
+            <CardTitle className="text-base">{t("tracking.todaysMood")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm font-medium">Mood</span>
+                <span className="text-sm font-medium">{t("tracking.mood")}</span>
                 <span className="text-2xl">{MOOD_EMOJIS[moodScore]}</span>
               </div>
               <input
@@ -148,7 +152,7 @@ export function TrackingPage() {
 
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm font-medium">Energy</span>
+                <span className="text-sm font-medium">{t("tracking.energy")}</span>
                 <span className="font-semibold text-primary">{energyScore}/10</span>
               </div>
               <input
@@ -164,12 +168,12 @@ export function TrackingPage() {
             <textarea
               value={moodNotes}
               onChange={(e) => setMoodNotes(e.target.value)}
-              placeholder="How are you feeling today? (optional)"
+              placeholder={t("tracking.moodNotesPlaceholder")}
               rows={3}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
             <Button onClick={saveMood} className="w-full">
-              {mood ? "Update" : "Save"} Today's Mood
+              {mood ? t("tracking.updateMood") : t("tracking.saveMood")}
             </Button>
           </CardContent>
         </Card>
@@ -177,7 +181,7 @@ export function TrackingPage() {
         {moodHistory.length > 0 && (
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Past Moods</CardTitle>
+              <CardTitle className="text-base">{t("tracking.pastMoods")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {moodHistory.map((entry) => (
@@ -186,10 +190,10 @@ export function TrackingPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">
-                        {format(new Date(entry.entry_date + "T00:00:00"), "EEE, MMM d")}
+                        {format(new Date(entry.entry_date + "T00:00:00"), "EEE, MMM d", { locale })}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        mood {entry.mood_score}/10 · energy {entry.energy_score}/10
+                        {t("tracking.moodEnergyLine", { m: entry.mood_score, e: entry.energy_score })}
                       </span>
                     </div>
                     {entry.notes && (
@@ -207,12 +211,12 @@ export function TrackingPage() {
       {tab === "health" && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Today's Health</CardTitle>
+            <CardTitle className="text-base">{t("tracking.todaysHealth")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Sleep (hours)</label>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("tracking.sleep")}</label>
                 <input
                   type="number"
                   min={0}
@@ -220,52 +224,52 @@ export function TrackingPage() {
                   step={0.5}
                   value={sleepHours}
                   onChange={(e) => setSleepHours(e.target.value)}
-                  placeholder="e.g. 7.5"
+                  placeholder={t("tracking.egSleep")}
                   className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Water (glasses)</label>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("tracking.water")}</label>
                 <input
                   type="number"
                   min={0}
                   value={waterGlasses}
                   onChange={(e) => setWaterGlasses(e.target.value)}
-                  placeholder="e.g. 8"
+                  placeholder={t("tracking.egWater")}
                   className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Exercise (minutes)</label>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("tracking.exercise")}</label>
                 <input
                   type="number"
                   min={0}
                   value={exerciseMinutes}
                   onChange={(e) => setExerciseMinutes(e.target.value)}
-                  placeholder="e.g. 30"
+                  placeholder={t("tracking.egExercise")}
                   className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Weight (kg)</label>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("tracking.weight")}</label>
                 <input
                   type="number"
                   min={0}
                   step={0.1}
                   value={weightKg}
                   onChange={(e) => setWeightKg(e.target.value)}
-                  placeholder="e.g. 65.0"
+                  placeholder={t("tracking.egWeight")}
                   className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
               <div className="col-span-2">
-                <label className="mb-1 block text-xs font-medium text-muted-foreground">Steps</label>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("tracking.steps")}</label>
                 <input
                   type="number"
                   min={0}
                   value={steps}
                   onChange={(e) => setSteps(e.target.value)}
-                  placeholder="e.g. 8000"
+                  placeholder={t("tracking.egSteps")}
                   className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
@@ -273,12 +277,12 @@ export function TrackingPage() {
             <textarea
               value={healthNotes}
               onChange={(e) => setHealthNotes(e.target.value)}
-              placeholder="Notes (optional)"
+              placeholder={t("tracking.notesOptional")}
               rows={2}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
             <Button onClick={saveHealth} className="w-full">
-              {health ? "Update" : "Save"} Today's Health
+              {health ? t("tracking.updateHealth") : t("tracking.saveHealth")}
             </Button>
           </CardContent>
         </Card>
@@ -287,7 +291,7 @@ export function TrackingPage() {
       {tab === "books" && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Reading List</CardTitle>
+            <CardTitle className="text-base">{t("tracking.readingList")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {books.map((book) => (
@@ -302,10 +306,10 @@ export function TrackingPage() {
                   onChange={(e) => updateBookStatus(book, e.target.value)}
                   className="rounded border bg-background px-2 py-1 text-xs outline-none"
                 >
-                  <option value="to_read">To Read</option>
-                  <option value="reading">Reading</option>
-                  <option value="completed">Completed</option>
-                  <option value="abandoned">Abandoned</option>
+                  <option value="to_read">{t("tracking.bookToRead")}</option>
+                  <option value="reading">{t("tracking.bookReading")}</option>
+                  <option value="completed">{t("tracking.bookCompleted")}</option>
+                  <option value="abandoned">{t("tracking.bookAbandoned")}</option>
                 </select>
                 <button
                   onClick={() => deleteBook(book.id)}
@@ -321,10 +325,10 @@ export function TrackingPage() {
                 value={newBookTitle}
                 onChange={(e) => setNewBookTitle(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addBook()}
-                placeholder="Add a book..."
+                placeholder={t("tracking.addBookPlaceholder")}
                 className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
-              <Button size="sm" onClick={addBook}>Add</Button>
+              <Button size="sm" onClick={addBook}>{t("common.add")}</Button>
             </div>
           </CardContent>
         </Card>

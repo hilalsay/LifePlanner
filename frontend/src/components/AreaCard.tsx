@@ -3,6 +3,7 @@ import { Settings2, Trash2, Check, X } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { LifeArea, YearlyGoal } from "@/lib/api";
+import { useI18n } from "@/contexts/LanguageContext";
 
 export const AREA_COLORS = [
   "#6366f1", "#ec4899", "#f59e0b", "#10b981",
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export function AreaCard({ area, goals, selected, onSelect, onUpdate, onDelete }: Props) {
+  const { t } = useI18n();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(area.name);
   const [color, setColor] = useState(area.color);
@@ -68,13 +70,13 @@ export function AreaCard({ area, goals, selected, onSelect, onUpdate, onDelete }
                 if (e.key === "Enter") saveAndClose();
                 if (e.key === "Escape") setEditing(false);
               }}
-              placeholder="Area name"
+              placeholder={t("area.namePlaceholder")}
               className="w-full rounded border bg-background px-2 py-1 text-sm font-semibold outline-none focus:ring-2 focus:ring-ring"
             />
 
             {/* Color picker */}
             <div>
-              <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Color</p>
+              <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{t("area.color")}</p>
               <div className="flex flex-wrap items-center gap-1.5">
                 {AREA_COLORS.map((c) => (
                   <button
@@ -93,7 +95,7 @@ export function AreaCard({ area, goals, selected, onSelect, onUpdate, onDelete }
                 {/* Custom color */}
                 <label
                   className="relative h-6 w-6 cursor-pointer overflow-hidden rounded-full border border-dashed border-muted-foreground/50"
-                  title="Custom color"
+                  title={t("area.customColor")}
                   style={
                     AREA_COLORS.some((c) => c.toLowerCase() === color.toLowerCase())
                       ? undefined
@@ -119,7 +121,7 @@ export function AreaCard({ area, goals, selected, onSelect, onUpdate, onDelete }
               onClick={() => onUpdate({ is_active: !area.is_active })}
               className="flex w-full items-center justify-between rounded-md border px-2.5 py-1.5 text-xs"
             >
-              <span className="font-medium">{area.is_active ? "Active" : "Inactive"}</span>
+              <span className="font-medium">{area.is_active ? t("area.active") : t("area.inactive")}</span>
               <span
                 className={`relative h-4 w-7 rounded-full transition-colors ${
                   area.is_active ? "bg-primary" : "bg-muted-foreground/30"
@@ -139,7 +141,7 @@ export function AreaCard({ area, goals, selected, onSelect, onUpdate, onDelete }
                 onClick={onDelete}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
               >
-                <Trash2 className="h-3.5 w-3.5" /> Delete
+                <Trash2 className="h-3.5 w-3.5" /> {t("common.delete")}
               </button>
               <div className="flex items-center gap-1">
                 <button onClick={() => setEditing(false)} className="rounded p-1 text-muted-foreground hover:bg-muted">
@@ -157,7 +159,7 @@ export function AreaCard({ area, goals, selected, onSelect, onUpdate, onDelete }
               onClick={toggleActive}
               className="h-3 w-3 shrink-0 rounded-full transition-transform hover:scale-125"
               style={{ backgroundColor: area.color }}
-              title={area.is_active ? "Click to deactivate" : "Click to activate"}
+              title={area.is_active ? t("area.clickDeactivate") : t("area.clickActivate")}
             />
             <h3
               className="flex-1 cursor-pointer truncate text-sm font-semibold"
@@ -166,12 +168,12 @@ export function AreaCard({ area, goals, selected, onSelect, onUpdate, onDelete }
               {area.name}
             </h3>
             {inactive && (
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0">Inactive</Badge>
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0">{t("area.inactive")}</Badge>
             )}
             <button
               onClick={(e) => { e.stopPropagation(); setEditing(true); }}
               className="text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
-              title="Customize"
+              title={t("area.customize")}
             >
               <Settings2 className="h-3.5 w-3.5" />
             </button>
@@ -185,7 +187,7 @@ export function AreaCard({ area, goals, selected, onSelect, onUpdate, onDelete }
           onClick={onSelect}
         >
           {goals.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No goals yet</p>
+            <p className="text-xs text-muted-foreground">{t("area.noGoals")}</p>
           ) : (
             goals.map((g) => (
               <div key={g.id} className="flex items-center gap-2">

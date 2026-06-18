@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { planningApi, type YearlyGoal } from "@/lib/api";
 import { setChatDragItem } from "@/lib/dragItem";
+import { useI18n } from "@/contexts/LanguageContext";
 
 const STATUS_VARIANT = {
   active: "default",
@@ -13,6 +14,7 @@ const STATUS_VARIANT = {
 } as const;
 
 export function YearView() {
+  const { t } = useI18n();
   const [year, setYear] = useState(new Date().getFullYear());
   const [goals, setGoals] = useState<YearlyGoal[]>([]);
   const [newTitle, setNewTitle] = useState("");
@@ -75,15 +77,15 @@ export function YearView() {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Yearly Goals</CardTitle>
+            <CardTitle className="text-base">{t("year.goalsTitle")}</CardTitle>
             <span className="text-xs text-muted-foreground">
-              {goals.filter((g) => g.status === "completed").length} / {goals.length} completed
+              {t("common.completedCount", { done: goals.filter((g) => g.status === "completed").length, total: goals.length })}
             </span>
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
           {goals.length === 0 && (
-            <p className="text-sm text-muted-foreground">No goals set for {year}.</p>
+            <p className="text-sm text-muted-foreground">{t("year.noGoals", { year })}</p>
           )}
           {goals.map((goal) => (
             <div
@@ -154,7 +156,7 @@ export function YearView() {
                   className="cursor-pointer text-xs"
                   onClick={() => toggleStatus(goal)}
                 >
-                  {goal.status}
+                  {t(`status.${goal.status}`)}
                 </Badge>
               </div>
             </div>
@@ -165,7 +167,7 @@ export function YearView() {
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addGoal()}
-              placeholder="Add a yearly goal..."
+              placeholder={t("year.addPlaceholder")}
               className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
             <Button size="sm" onClick={addGoal}>

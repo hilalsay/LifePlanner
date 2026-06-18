@@ -21,6 +21,8 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, displayName?: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateProfile: (data: { display_name?: string; avatar_url?: string }) => Promise<void>;
+  uploadAvatar: (file: File) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -108,6 +110,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data);
   }
 
+  async function updateProfile(data: { display_name?: string; avatar_url?: string }): Promise<void> {
+    const res = await fetch(`${BASE}/auth/me`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `HTTP ${res.status}`);
+    }
+    const updated: User = await res.json();
+    setUser(updated);
+  }
+
+  async function uploadAvatar(file: File): Promise<void> {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${BASE}/auth/me/avatar`, {
+      method: "POST",
+      credentials: "include",
+      body: form, // let the browser set the multipart boundary
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `HTTP ${res.status}`);
+    }
+    const updated: User = await res.json();
+    setUser(updated);
+  }
+
   async function logout(): Promise<void> {
     try {
       await fetch(`${BASE}/auth/logout`, {
@@ -122,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, logout, updateProfile, uploadAvatar }}>
       {children}
     </AuthContext.Provider>
   );

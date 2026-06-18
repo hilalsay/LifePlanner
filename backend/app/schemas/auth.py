@@ -12,6 +12,10 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
+class UserUpdate(BaseModel):
+    display_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+
 class UserOut(BaseModel):
     id: uuid.UUID
     email: str

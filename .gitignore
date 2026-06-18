@@ -2,6 +2,9 @@
 .env
 *.env.local
 
+# Uploaded files (avatars, etc.)
+backend/uploads/
+
 # Python
 __pycache__/
 *.py[cod]

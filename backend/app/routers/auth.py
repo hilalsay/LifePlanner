@@ -3,14 +3,14 @@ from typing import Optional
 
 import httpx
 from authlib.integrations.starlette_client import OAuth
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, UploadFile, File
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
 from app.models.user import User
-from app.schemas.auth import LoginRequest, RegisterRequest, UserOut
+from app.schemas.auth import LoginRequest, RegisterRequest, UserOut, UserUpdate
 from app.services.auth_service import (
     create_access_token,
     create_refresh_token,
@@ -153,6 +153,83 @@ def me(
     user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
     if not user:
         raise HTTPException(401, "User not found")
+    return user
+
+
+@router.patch("/me", response_model=UserOut)
+def update_me(
+    data: UserUpdate,
+    access_token: Optional[str] = Cookie(None),
+    db: Session = Depends(get_db),
+):
+    from app.services.auth_service import decode_access_token
+    if not access_token:
+        raise HTTPException(401, "Not authenticated")
+    user_id = decode_access_token(access_token)
+    if not user_id:
+        raise HTTPException(401, "Invalid or expired token")
+    user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
+    if not user:
+        raise HTTPException(401, "User not found")
+
+    updates = data.model_dump(exclude_unset=True)
+    if "display_name" in updates:
+        dn = (updates["display_name"] or "").strip()
+        user.display_name = dn or None
+    if "avatar_url" in updates:
+        au = (updates["avatar_url"] or "").strip()
+        user.avatar_url = au or None
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.post("/me/avatar", response_model=UserOut)
+async def upload_avatar(
+    file: UploadFile = File(...),
+    access_token: Optional[str] = Cookie(None),
+    db: Session = Depends(get_db),
+):
+    import os
+    import uuid as _uuid
+    from pathlib import Path
+    from app.services.auth_service import decode_access_token
+
+    if not access_token:
+        raise HTTPException(401, "Not authenticated")
+    user_id = decode_access_token(access_token)
+    if not user_id:
+        raise HTTPException(401, "Invalid or expired token")
+    user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
+    if not user:
+        raise HTTPException(401, "User not found")
+
+    if not (file.content_type or "").startswith("image/"):
+        raise HTTPException(400, "File must be an image")
+
+    ext_map = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp", "image/gif": ".gif"}
+    ext = ext_map.get(file.content_type, ".png")
+
+    data = await file.read()
+    if len(data) > 5 * 1024 * 1024:  # 5 MB cap
+        raise HTTPException(400, "Image must be under 5 MB")
+
+    avatars_dir = Path(__file__).resolve().parent.parent.parent / "uploads" / "avatars"
+    avatars_dir.mkdir(parents=True, exist_ok=True)
+
+    # Remove any previous avatar files for this user, then write the new one.
+    for old in avatars_dir.glob(f"{user_id}-*"):
+        try:
+            old.unlink()
+        except OSError:
+            pass
+
+    filename = f"{user_id}-{_uuid.uuid4().hex[:8]}{ext}"
+    (avatars_dir / filename).write_bytes(data)
+
+    user.avatar_url = f"/api/v1/uploads/avatars/{filename}"
+    db.commit()
+    db.refresh(user)
     return user
 
 

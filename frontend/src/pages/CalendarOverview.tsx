@@ -4,6 +4,8 @@ import {
   getDaysInMonth,
   startOfMonth,
   getDay,
+  startOfWeek,
+  addDays,
   addMonths,
   subMonths,
 } from "date-fns";
@@ -13,6 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { planningApi, trackingApi, type DailyTask, type MoodEntry, type HealthEntry } from "@/lib/api";
 import { toDateString } from "@/lib/utils";
+import { useI18n } from "@/contexts/LanguageContext";
+import { dateLocale } from "@/lib/dateLocale";
 
 const MOOD_EMOJIS = ["", "😞", "😔", "😐", "🙂", "😊", "😄", "😁", "🤩", "🥳", "🌟"];
 
@@ -74,6 +78,8 @@ function buildCells(month: Date): Cell[] {
 }
 
 export function CalendarOverview() {
+  const { t, lang } = useI18n();
+  const locale = dateLocale(lang);
   const [month, setMonth] = useState(new Date());
   const [moodMap, setMoodMap] = useState<Record<string, MoodEntry>>({});
 
@@ -138,7 +144,7 @@ export function CalendarOverview() {
         <Button variant="outline" size="sm" onClick={() => setMonth((m) => subMonths(m, 1))}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <h2 className="font-semibold">{format(month, "MMMM yyyy")}</h2>
+        <h2 className="font-semibold">{format(month, "MMMM yyyy", { locale })}</h2>
         <Button variant="outline" size="sm" onClick={() => setMonth((m) => addMonths(m, 1))}>
           <ChevronRight className="h-4 w-4" />
         </Button>
@@ -147,8 +153,8 @@ export function CalendarOverview() {
       {/* calendar grid */}
       <div className="overflow-hidden rounded-xl border">
         <div className="grid grid-cols-7 border-b bg-muted/30">
-          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-            <div key={d} className="py-2 text-center text-xs font-medium text-muted-foreground">
+          {Array.from({ length: 7 }, (_, i) => format(addDays(startOfWeek(month, { weekStartsOn: 1 }), i), "EEE", { locale })).map((d, i) => (
+            <div key={i} className="py-2 text-center text-xs font-medium text-muted-foreground">
               {d}
             </div>
           ))}
@@ -187,45 +193,45 @@ export function CalendarOverview() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">
-              {format(new Date(selectedDate + "T00:00:00"), "EEEE, MMMM d")}
+              {format(new Date(selectedDate + "T00:00:00"), "EEEE, MMMM d", { locale })}
               {selectedDate === today && (
-                <span className="ml-2 text-xs font-normal text-muted-foreground">Today</span>
+                <span className="ml-2 text-xs font-normal text-muted-foreground">{t("common.today")}</span>
               )}
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loadingDay ? (
-              <p className="text-sm text-muted-foreground">Loading...</p>
+              <p className="text-sm text-muted-foreground">{t("day.loading")}</p>
             ) : (
               <div className="space-y-5">
 
                 {/* tasks */}
                 <section>
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Tasks
+                    {t("day.tasks")}
                     {selectedTasks.length > 0 && (
                       <span className="ml-2 font-normal normal-case">
-                        {selectedTasks.filter((t) => t.is_completed).length}/{selectedTasks.length} done
+                        {t("common.doneCount", { done: selectedTasks.filter((task) => task.is_completed).length, total: selectedTasks.length })}
                       </span>
                     )}
                   </p>
                   {selectedTasks.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No tasks recorded.</p>
+                    <p className="text-sm text-muted-foreground">{t("overview.noTasks")}</p>
                   ) : (
                     <div className="space-y-1.5">
-                      {selectedTasks.map((t) => (
-                        <div key={t.id} className="flex items-center gap-2">
-                          {t.is_completed
+                      {selectedTasks.map((task) => (
+                        <div key={task.id} className="flex items-center gap-2">
+                          {task.is_completed
                             ? <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
                             : <Circle className="h-4 w-4 shrink-0 text-muted-foreground" />}
-                          <span className={`flex-1 text-sm ${t.is_completed ? "line-through text-muted-foreground" : ""}`}>
-                            {t.title}
+                          <span className={`flex-1 text-sm ${task.is_completed ? "line-through text-muted-foreground" : ""}`}>
+                            {task.title}
                           </span>
                           <Badge
-                            variant={PRIORITY_COLORS[t.priority as keyof typeof PRIORITY_COLORS] ?? "outline"}
+                            variant={PRIORITY_COLORS[task.priority as keyof typeof PRIORITY_COLORS] ?? "outline"}
                             className="shrink-0 text-xs"
                           >
-                            {t.priority}
+                            {t(`priority.${task.priority}`)}
                           </Badge>
                         </div>
                       ))}
@@ -235,17 +241,17 @@ export function CalendarOverview() {
 
                 {/* mood */}
                 <section>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mood</p>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tracking.mood")}</p>
                   {!selectedMood ? (
-                    <p className="text-sm text-muted-foreground">No mood recorded.</p>
+                    <p className="text-sm text-muted-foreground">{t("overview.noMood")}</p>
                   ) : (
                     <div className="flex items-start gap-3">
                       <span className="text-3xl leading-none">{MOOD_EMOJIS[selectedMood.mood_score]}</span>
                       <div>
                         <p className="text-sm">
-                          Mood <span className="font-semibold">{selectedMood.mood_score}/10</span>
+                          {t("tracking.mood")} <span className="font-semibold">{selectedMood.mood_score}/10</span>
                           <span className="mx-1.5 text-muted-foreground">·</span>
-                          Energy <span className="font-semibold">{selectedMood.energy_score}/10</span>
+                          {t("tracking.energy")} <span className="font-semibold">{selectedMood.energy_score}/10</span>
                         </p>
                         {selectedMood.notes && (
                           <p className="mt-1 text-sm text-muted-foreground">{selectedMood.notes}</p>
@@ -257,40 +263,40 @@ export function CalendarOverview() {
 
                 {/* health */}
                 <section>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Health</p>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("tracking.tabHealth")}</p>
                   {!selectedHealth ? (
-                    <p className="text-sm text-muted-foreground">No health data recorded.</p>
+                    <p className="text-sm text-muted-foreground">{t("overview.noHealth")}</p>
                   ) : (
                     <div className="space-y-2">
                       <div className="grid grid-cols-3 gap-2">
                         {selectedHealth.sleep_hours != null && (
                           <div className="rounded-md border px-3 py-2 text-center">
                             <p className="text-lg font-semibold">{selectedHealth.sleep_hours}h</p>
-                            <p className="text-xs text-muted-foreground">Sleep</p>
+                            <p className="text-xs text-muted-foreground">{t("tracking.sleepShort")}</p>
                           </div>
                         )}
                         {selectedHealth.water_glasses != null && (
                           <div className="rounded-md border px-3 py-2 text-center">
                             <p className="text-lg font-semibold">{selectedHealth.water_glasses}</p>
-                            <p className="text-xs text-muted-foreground">Water</p>
+                            <p className="text-xs text-muted-foreground">{t("tracking.waterShort")}</p>
                           </div>
                         )}
                         {selectedHealth.exercise_minutes != null && (
                           <div className="rounded-md border px-3 py-2 text-center">
                             <p className="text-lg font-semibold">{selectedHealth.exercise_minutes}m</p>
-                            <p className="text-xs text-muted-foreground">Exercise</p>
+                            <p className="text-xs text-muted-foreground">{t("tracking.exerciseShort")}</p>
                           </div>
                         )}
                         {selectedHealth.weight_kg != null && (
                           <div className="rounded-md border px-3 py-2 text-center">
                             <p className="text-lg font-semibold">{selectedHealth.weight_kg}kg</p>
-                            <p className="text-xs text-muted-foreground">Weight</p>
+                            <p className="text-xs text-muted-foreground">{t("tracking.weightShort")}</p>
                           </div>
                         )}
                         {selectedHealth.steps != null && (
                           <div className="rounded-md border px-3 py-2 text-center">
                             <p className="text-lg font-semibold">{selectedHealth.steps.toLocaleString()}</p>
-                            <p className="text-xs text-muted-foreground">Steps</p>
+                            <p className="text-xs text-muted-foreground">{t("tracking.steps")}</p>
                           </div>
                         )}
                       </div>
