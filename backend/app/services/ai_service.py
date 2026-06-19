@@ -148,66 +148,14 @@ Examples:
 - User "remind me to call the dentist tomorrow" -> {{"message": "Added for tomorrow:", "suggestions": [{{"kind": "task", "title": "Call the dentist", "description": "Scheduled for tomorrow.", "date": "<tomorrow's date>"}}]}}"""
 
 
-async def chat_with_assistant(messages: list[dict], ctx: dict, language: str = "en") -> dict:
-    """Goal-planning chat. Returns {"message": str, "suggestions": [{kind,title,description}]}."""
-    if not settings.gemini_api_key:
-        return {
-            "message": "The assistant isn't connected yet. Add GEMINI_API_KEY to backend/.env "
-                       "and restart the backend to enable it.",
-            "suggestions": [],
-        }
-
+def _parse_chat_json(raw_text: str) -> dict:
+    """Parse the model's JSON reply into {message, suggestions[]}, defensively."""
     import json
     import re
-    import google.generativeai as genai
-
-    genai.configure(api_key=settings.gemini_api_key)
-    model = genai.GenerativeModel(
-        "gemini-2.5-flash-lite",
-        system_instruction=_build_chat_system_instruction(ctx, language),
-        generation_config={"response_mime_type": "application/json"},
-    )
-
-    # Map chat history to Gemini's content format ("assistant" -> "model").
-    contents = []
-    for m in messages:
-        text = (m.get("content") or "").strip()
-        if not text:
-            continue
-        role = "model" if m.get("role") == "assistant" else "user"
-        contents.append({"role": role, "parts": [text]})
-    # Gemini requires the conversation to start with a user turn.
-    while contents and contents[0]["role"] == "model":
-        contents.pop(0)
-    if not contents:
-        return {"message": "Tell me what you'd like to work on.", "suggestions": []}
-
-    try:
-        response = await model.generate_content_async(contents)
-    except Exception as e:
-        name = type(e).__name__
-        if "ResourceExhausted" in name or "429" in str(e):
-            return {
-                "message": "I've hit Gemini's rate limit for now — that's a quota cap on the "
-                           "API key, not your plan. Give it a minute and try again.",
-                "suggestions": [],
-            }
-        return {
-            "message": "Sorry, I hit an error talking to the AI. Please try again.",
-            "suggestions": [],
-        }
-
-    # Safely extract the model's text (can raise if the response was blocked/empty).
-    try:
-        raw_text = response.text
-    except Exception:
-        return {"message": "The AI returned an empty response. Please try again.", "suggestions": []}
-
     try:
         data = json.loads(raw_text)
     except Exception:
-        # Not valid JSON — fall back to showing the plain text as the message.
-        return {"message": raw_text.strip() or "Please try again.", "suggestions": []}
+        return {"message": (raw_text or "").strip() or "Please try again.", "suggestions": []}
 
     message = str(data.get("message", "")).strip() or "Here are a few ideas."
     suggestions = []
@@ -227,5 +175,90 @@ async def chat_with_assistant(messages: list[dict], ctx: dict, language: str = "
                     if re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw_date):
                         item["date"] = raw_date
                 suggestions.append(item)
-
     return {"message": message, "suggestions": suggestions}
+
+
+def _normalize_history(messages: list[dict]) -> list[dict]:
+    """Trim to non-empty {role, content} turns starting with a user turn."""
+    history = []
+    for m in messages:
+        text = (m.get("content") or "").strip()
+        if not text:
+            continue
+        role = "assistant" if m.get("role") == "assistant" else "user"
+        history.append({"role": role, "content": text})
+    while history and history[0]["role"] == "assistant":
+        history.pop(0)
+    return history
+
+
+async def _gemini_chat(system: str, history: list[dict]) -> dict:
+    if not settings.gemini_api_key:
+        return {
+            "message": "The assistant isn't connected yet. Add GEMINI_API_KEY to backend/.env "
+                       "and restart the backend to enable it.",
+            "suggestions": [],
+        }
+    import google.generativeai as genai
+
+    genai.configure(api_key=settings.gemini_api_key)
+    model = genai.GenerativeModel(
+        "gemini-2.5-flash-lite",
+        system_instruction=system,
+        generation_config={"response_mime_type": "application/json"},
+    )
+    contents = [
+        {"role": "model" if m["role"] == "assistant" else "user", "parts": [m["content"]]}
+        for m in history
+    ]
+    try:
+        response = await model.generate_content_async(contents)
+    except Exception as e:
+        if "ResourceExhausted" in type(e).__name__ or "429" in str(e):
+            return {
+                "message": "I've hit Gemini's rate limit for now — that's a quota cap on the "
+                           "API key, not your plan. Give it a minute and try again.",
+                "suggestions": [],
+            }
+        return {"message": "Sorry, I hit an error talking to the AI. Please try again.", "suggestions": []}
+
+    try:
+        raw_text = response.text
+    except Exception:
+        return {"message": "The AI returned an empty response. Please try again.", "suggestions": []}
+    return _parse_chat_json(raw_text)
+
+
+async def _ollama_chat(system: str, history: list[dict]) -> dict:
+    import httpx
+
+    base = settings.ollama_base_url.rstrip("/")
+    payload = {
+        "model": settings.ollama_model,
+        "messages": [{"role": "system", "content": system}, *history],
+        "stream": False,
+        "format": "json",
+        "options": {"temperature": 0.6},
+    }
+    headers = {"Host": settings.ollama_host_header} if settings.ollama_host_header else {}
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            resp = await client.post(f"{base}/api/chat", json=payload, headers=headers)
+            resp.raise_for_status()
+            content = resp.json().get("message", {}).get("content", "")
+    except Exception:
+        return {"message": "Sorry, I couldn't reach the local model. Please try again.", "suggestions": []}
+    return _parse_chat_json(content)
+
+
+async def chat_with_assistant(messages: list[dict], ctx: dict, language: str = "en") -> dict:
+    """Goal-planning chat. Dispatches to the configured provider (gemini | ollama)."""
+    system = _build_chat_system_instruction(ctx, language)
+    history = _normalize_history(messages)
+    if not history:
+        return {"message": "Tell me what you'd like to work on.", "suggestions": []}
+
+    provider = (settings.ai_provider or "gemini").lower()
+    if provider == "ollama" and settings.ollama_base_url:
+        return await _ollama_chat(system, history)
+    return await _gemini_chat(system, history)

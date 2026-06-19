@@ -10,6 +10,13 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     dev_user_id: uuid.UUID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
+    # AI provider for the assistant chat: "gemini" or "ollama"
+    ai_provider: str = "gemini"
+    # Ollama (local/self-hosted LLM)
+    ollama_base_url: str = ""
+    ollama_model: str = "qwen2.5:3b"
+    ollama_host_header: str = "127.0.0.1"  # Ollama's DNS-rebind guard expects a localhost Host
+
     # JWT
     jwt_secret_key: str = "CHANGE_ME_USE_openssl_rand_-hex_32_IN_PRODUCTION"
     jwt_algorithm: str = "HS256"
