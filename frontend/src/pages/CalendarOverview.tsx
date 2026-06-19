@@ -20,6 +20,20 @@ import { dateLocale } from "@/lib/dateLocale";
 
 const MOOD_EMOJIS = ["", "😞", "😔", "😐", "🙂", "😊", "😄", "😁", "🤩", "🥳", "🌟"];
 
+// Background tint per mood score (1–10), red → green. Tinted for light/dark.
+const MOOD_BG: Record<number, string> = {
+  1: "bg-red-200/70 dark:bg-red-500/25",
+  2: "bg-red-100/70 dark:bg-red-500/20",
+  3: "bg-orange-100/70 dark:bg-orange-500/20",
+  4: "bg-amber-100/70 dark:bg-amber-500/20",
+  5: "bg-yellow-100/70 dark:bg-yellow-500/20",
+  6: "bg-lime-100/70 dark:bg-lime-500/20",
+  7: "bg-green-100/70 dark:bg-green-500/20",
+  8: "bg-green-200/70 dark:bg-green-500/25",
+  9: "bg-emerald-200/70 dark:bg-emerald-500/30",
+  10: "bg-emerald-300/70 dark:bg-emerald-500/35",
+};
+
 const PRIORITY_COLORS = {
   high: "destructive",
   medium: "default",
@@ -164,12 +178,15 @@ export function CalendarOverview() {
             const moodEntry = moodMap[dateStr];
             const isToday = dateStr === today;
             const isSelected = dateStr === selectedDate;
+            const moodBg = moodEntry && isCurrentMonth ? MOOD_BG[moodEntry.mood_score] ?? "" : "";
             return (
               <button
                 key={dateStr}
                 onClick={() => selectDay(dateStr)}
-                className={`flex flex-col items-center gap-0.5 border-b border-r py-1.5 transition-colors hover:bg-accent focus:outline-none last:border-r-0 ${
-                  isSelected ? "bg-primary/10 ring-1 ring-inset ring-primary" : ""
+                className={`flex flex-col items-center gap-0.5 border-b border-r py-1.5 transition-colors hover:bg-accent focus:outline-none last:border-r-0 ${moodBg} ${
+                  isSelected
+                    ? `ring-1 ring-inset ring-primary ${moodBg ? "" : "bg-primary/10"}`
+                    : ""
                 } ${!isCurrentMonth ? "opacity-30" : ""}`}
               >
                 <span
@@ -186,6 +203,17 @@ export function CalendarOverview() {
             );
           })}
         </div>
+      </div>
+
+      {/* mood color legend */}
+      <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+        <span>{t("overview.moodLow")}</span>
+        <div className="flex overflow-hidden rounded-full">
+          {Array.from({ length: 10 }, (_, i) => (
+            <span key={i} className={`h-3 w-4 ${MOOD_BG[i + 1]}`} />
+          ))}
+        </div>
+        <span>{t("overview.moodHigh")}</span>
       </div>
 
       {/* day detail */}

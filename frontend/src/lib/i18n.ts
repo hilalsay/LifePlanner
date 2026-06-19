@@ -241,6 +241,8 @@ const en: Dict = {
   "overview.noTasks": "No tasks recorded.",
   "overview.noMood": "No mood recorded.",
   "overview.noHealth": "No health data recorded.",
+  "overview.moodLow": "Low mood",
+  "overview.moodHigh": "Great mood",
 
   // Settings
   "settings.appearance": "Appearance",
@@ -539,6 +541,8 @@ const tr: Dict = {
   "overview.noTasks": "Görev kaydı yok.",
   "overview.noMood": "Ruh hali kaydı yok.",
   "overview.noHealth": "Sağlık verisi kaydı yok.",
+  "overview.moodLow": "Düşük mod",
+  "overview.moodHigh": "Harika mod",
 
   // Settings
   "settings.appearance": "Görünüm",
