@@ -5,13 +5,23 @@ import { trackingApi, type BookEntry } from "@/lib/api";
 import { useI18n } from "@/contexts/LanguageContext";
 
 export const STATUS_STYLES = {
-  reading:   { emoji: "📖", classes: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
-  completed: { emoji: "✅", classes: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" },
-  to_read:   { emoji: "📚", classes: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
-  abandoned: { emoji: "❌", classes: "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300" },
+  reading:   { emoji: "📖", labelKey: "tracking.bookReading",   classes: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
+  completed: { emoji: "✅", labelKey: "tracking.bookCompleted", classes: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" },
+  to_read:   { emoji: "📚", labelKey: "tracking.bookToRead",    classes: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
+  abandoned: { emoji: "❌", labelKey: "tracking.bookAbandoned", classes: "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300" },
 } as const;
 
 const STATUSES = ["to_read", "reading", "completed", "abandoned"] as const;
+
+export function StatusPill({ status }: { status: string }) {
+  const { t } = useI18n();
+  const cfg = STATUS_STYLES[status as keyof typeof STATUS_STYLES] ?? STATUS_STYLES.to_read;
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${cfg.classes}`}>
+      {cfg.emoji} {t(cfg.labelKey)}
+    </span>
+  );
+}
 
 function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const [hover, setHover] = useState(0);
@@ -29,9 +39,7 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
         >
           <Star
             className={`h-7 w-7 transition-colors ${
-              n <= (hover || value)
-                ? "fill-yellow-400 text-yellow-400"
-                : "text-muted-foreground/30"
+              n <= (hover || value) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"
             }`}
           />
         </button>
@@ -72,6 +80,9 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
     return () => { document.body.style.overflow = prev; };
   }, []);
 
+  // Reset confirm-delete if the book changes while the modal is open
+  useEffect(() => { setConfirmDelete(false); }, [book.id]);
+
   const handleStatusChange = (newStatus: string) => {
     setStatus(newStatus);
     if (newStatus === "completed" && !rating && !review) {
@@ -107,33 +118,24 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
   };
 
   const handleDelete = async () => {
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      return;
-    }
+    if (!confirmDelete) { setConfirmDelete(true); return; }
     await trackingApi.deleteBook(book.id);
     onDeleted(book.id);
   };
 
-  const statusCfg = STATUS_STYLES[status as keyof typeof STATUS_STYLES] ?? STATUS_STYLES.to_read;
-
-  const inputCls =
-    "w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring";
+  const inputCls = "w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring";
   const labelCls = "text-xs font-medium text-muted-foreground mb-1 block";
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Sheet — slides from bottom on mobile, centered on desktop */}
       <div className="relative mt-auto sm:m-auto sm:w-full sm:max-w-lg flex flex-col max-h-[92dvh] rounded-t-2xl sm:rounded-2xl bg-background shadow-2xl overflow-hidden">
-        {/* Drag handle (mobile only) */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0">
           <div className="h-1 w-10 rounded-full bg-muted-foreground/25" />
         </div>
 
-        {/* Header row */}
+        {/* Header */}
         <div className="flex items-start gap-3 px-4 pt-2 pb-3 border-b shrink-0">
           <div className="shrink-0 w-14 h-[76px] sm:w-16 sm:h-[84px] rounded-lg overflow-hidden bg-muted flex items-center justify-center">
             {book.cover_url ? (
@@ -144,26 +146,12 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
           </div>
           <div className="flex-1 min-w-0 pt-0.5">
             <p className="font-semibold text-base leading-snug">{book.title}</p>
-            {book.author && (
-              <p className="text-sm text-muted-foreground mt-0.5">{book.author}</p>
-            )}
-            <span
-              className={`mt-2 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${statusCfg.classes}`}
-            >
-              {statusCfg.emoji}{" "}
-              {status === "to_read"
-                ? t("tracking.bookToRead")
-                : status === "reading"
-                ? t("tracking.bookReading")
-                : status === "completed"
-                ? t("tracking.bookCompleted")
-                : t("tracking.bookAbandoned")}
-            </span>
+            {book.author && <p className="text-sm text-muted-foreground mt-0.5">{book.author}</p>}
+            <div className="mt-2">
+              <StatusPill status={status} />
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="shrink-0 rounded-full p-1.5 hover:bg-muted transition-colors mt-0.5"
-          >
+          <button onClick={onClose} className="shrink-0 rounded-full p-1.5 hover:bg-muted transition-colors mt-0.5">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -179,14 +167,6 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
             <div className="flex flex-wrap gap-2">
               {STATUSES.map((s) => {
                 const cfg = STATUS_STYLES[s];
-                const label =
-                  s === "to_read"
-                    ? t("tracking.bookToRead")
-                    : s === "reading"
-                    ? t("tracking.bookReading")
-                    : s === "completed"
-                    ? t("tracking.bookCompleted")
-                    : t("tracking.bookAbandoned");
                 return (
                   <button
                     key={s}
@@ -197,7 +177,7 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
                         : "bg-muted text-muted-foreground hover:bg-muted/70"
                     }`}
                   >
-                    {cfg.emoji} {label}
+                    {cfg.emoji} {t(cfg.labelKey)}
                   </button>
                 );
               })}
@@ -212,21 +192,11 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
             </div>
             <div>
               <label className={labelCls}>{t("tracking.bookAuthor")}</label>
-              <input
-                value={author}
-                onChange={(e) => setAuthor(e.target.value)}
-                placeholder={t("tracking.bookAuthorPlaceholder")}
-                className={inputCls}
-              />
+              <input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder={t("tracking.bookAuthorPlaceholder")} className={inputCls} />
             </div>
             <div>
               <label className={labelCls}>{t("tracking.bookGenre")}</label>
-              <input
-                value={genre}
-                onChange={(e) => setGenre(e.target.value)}
-                placeholder={t("tracking.bookGenrePlaceholder")}
-                className={inputCls}
-              />
+              <input value={genre} onChange={(e) => setGenre(e.target.value)} placeholder={t("tracking.bookGenrePlaceholder")} className={inputCls} />
             </div>
           </div>
 
@@ -234,21 +204,11 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>{t("tracking.bookStartDate")}</label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className={inputCls}
-              />
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputCls} />
             </div>
             <div>
               <label className={labelCls}>{t("tracking.bookEndDate")}</label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className={inputCls}
-              />
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputCls} />
             </div>
           </div>
 
@@ -256,33 +216,16 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>{t("tracking.bookCurrentPage")}</label>
-              <input
-                type="number"
-                min={0}
-                value={currentPage}
-                onChange={(e) => setCurrentPage(e.target.value)}
-                placeholder="0"
-                className={inputCls}
-              />
+              <input type="number" min={0} value={currentPage} onChange={(e) => setCurrentPage(e.target.value)} placeholder="0" className={inputCls} />
             </div>
             <div>
               <label className={labelCls}>{t("tracking.bookTotalPages")}</label>
-              <input
-                type="number"
-                min={0}
-                value={totalPages}
-                onChange={(e) => setTotalPages(e.target.value)}
-                placeholder="0"
-                className={inputCls}
-              />
+              <input type="number" min={0} value={totalPages} onChange={(e) => setTotalPages(e.target.value)} placeholder="0" className={inputCls} />
             </div>
           </div>
 
           {/* Review section */}
-          <div
-            ref={reviewSectionRef}
-            className="rounded-xl border-2 border-dashed border-muted-foreground/20 p-4 space-y-4"
-          >
+          <div ref={reviewSectionRef} className="rounded-xl border-2 border-dashed border-muted-foreground/20 p-4 space-y-4">
             <h3 className="text-sm font-semibold">{t("tracking.myReview")}</h3>
 
             {showReviewPrompt && (
@@ -298,24 +241,12 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
 
             <div>
               <label className={labelCls}>{t("tracking.bookReviewText")}</label>
-              <textarea
-                value={review}
-                onChange={(e) => setReview(e.target.value)}
-                placeholder={t("tracking.bookReviewPlaceholder")}
-                rows={4}
-                className={`${inputCls} resize-none`}
-              />
+              <textarea value={review} onChange={(e) => setReview(e.target.value)} placeholder={t("tracking.bookReviewPlaceholder")} rows={4} className={`${inputCls} resize-none`} />
             </div>
 
             <div>
               <label className={labelCls}>{t("tracking.myNotes")}</label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder={t("tracking.myNotesPlaceholder")}
-                rows={3}
-                className={`${inputCls} resize-none`}
-              />
+              <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t("tracking.myNotesPlaceholder")} rows={3} className={`${inputCls} resize-none`} />
             </div>
           </div>
         </div>
@@ -328,18 +259,10 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
           <Button
             variant="outline"
             onClick={handleDelete}
-            className={
-              confirmDelete
-                ? "border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground px-3"
-                : "px-3"
-            }
+            className={confirmDelete ? "border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground px-3" : "px-3"}
             title={t("common.delete")}
           >
-            {confirmDelete ? (
-              <span className="text-xs">{t("tracking.confirmDelete")}</span>
-            ) : (
-              <Trash2 className="h-4 w-4" />
-            )}
+            {confirmDelete ? <span className="text-xs">{t("tracking.confirmDelete")}</span> : <Trash2 className="h-4 w-4" />}
           </Button>
         </div>
       </div>
