@@ -1,4 +1,3 @@
-import uuid
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,7 +7,6 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://lifeplanner:lifeplanner123@localhost:5432/life_planner"
     anthropic_api_key: str = ""
     gemini_api_key: str = ""
-    dev_user_id: uuid.UUID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
     # AI provider for the assistant chat: "gemini" or "ollama"
     ai_provider: str = "gemini"
