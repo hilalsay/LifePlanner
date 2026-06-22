@@ -44,6 +44,8 @@ class BookEntry(BaseModel):
     end_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     rating: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # 1-5
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    cover_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    review: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 
 class WeeklyAIReview(BaseModel):

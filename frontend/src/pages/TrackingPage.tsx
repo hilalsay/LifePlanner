@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
-import { BookOpen, Heart, Activity, Trash2 } from "lucide-react";
+import { BookOpen, Heart, Activity } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { trackingApi, type MoodEntry, type HealthEntry, type BookEntry } from "@/lib/api";
+import { trackingApi, type MoodEntry, type HealthEntry } from "@/lib/api";
 import { toDateString } from "@/lib/utils";
 import { format, subDays } from "date-fns";
 import { useI18n } from "@/contexts/LanguageContext";
 import { dateLocale } from "@/lib/dateLocale";
+import { BooksTab } from "@/components/books/BooksTab";
 
 const MOOD_EMOJIS = ["", "😞", "😔", "😐", "🙂", "😊", "😄", "😁", "🤩", "🥳", "🌟"];
 
@@ -17,7 +18,6 @@ export function TrackingPage() {
   const [mood, setMood] = useState<MoodEntry | null>(null);
   const [moodHistory, setMoodHistory] = useState<MoodEntry[]>([]);
   const [health, setHealth] = useState<HealthEntry | null>(null);
-  const [books, setBooks] = useState<BookEntry[]>([]);
 
   const [moodScore, setMoodScore] = useState(7);
   const [energyScore, setEnergyScore] = useState(7);
@@ -29,8 +29,6 @@ export function TrackingPage() {
   const [weightKg, setWeightKg] = useState("");
   const [steps, setSteps] = useState("");
   const [healthNotes, setHealthNotes] = useState("");
-
-  const [newBookTitle, setNewBookTitle] = useState("");
 
   const today = toDateString(new Date());
 
@@ -60,7 +58,6 @@ export function TrackingPage() {
         setHealthNotes(h.notes ?? "");
       }
     }).catch(console.error);
-    trackingApi.getBooks().then(setBooks).catch(console.error);
   }, []);
 
   const saveMood = async () => {
@@ -87,23 +84,6 @@ export function TrackingPage() {
     };
     const entry = await trackingApi.upsertHealth(data);
     setHealth(entry);
-  };
-
-  const addBook = async () => {
-    if (!newBookTitle.trim()) return;
-    const b = await trackingApi.createBook({ title: newBookTitle.trim() });
-    setBooks((bs) => [b, ...bs]);
-    setNewBookTitle("");
-  };
-
-  const updateBookStatus = async (book: BookEntry, status: string) => {
-    const updated = await trackingApi.updateBook(book.id, { status });
-    setBooks((bs) => bs.map((b) => (b.id === book.id ? updated : b)));
-  };
-
-  const deleteBook = async (id: string) => {
-    await trackingApi.deleteBook(id);
-    setBooks((bs) => bs.filter((b) => b.id !== id));
   };
 
   return (
@@ -288,51 +268,7 @@ export function TrackingPage() {
         </Card>
       )}
 
-      {tab === "books" && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">{t("tracking.readingList")}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {books.map((book) => (
-              <div key={book.id} className="group flex items-center gap-3 rounded-md border px-3 py-2">
-                <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-medium">{book.title}</p>
-                  {book.author && <p className="text-xs text-muted-foreground">{book.author}</p>}
-                </div>
-                <select
-                  value={book.status}
-                  onChange={(e) => updateBookStatus(book, e.target.value)}
-                  className="rounded border bg-background px-2 py-1 text-xs outline-none"
-                >
-                  <option value="to_read">{t("tracking.bookToRead")}</option>
-                  <option value="reading">{t("tracking.bookReading")}</option>
-                  <option value="completed">{t("tracking.bookCompleted")}</option>
-                  <option value="abandoned">{t("tracking.bookAbandoned")}</option>
-                </select>
-                <button
-                  onClick={() => deleteBook(book.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
-            <div className="flex gap-2 pt-2">
-              <input
-                type="text"
-                value={newBookTitle}
-                onChange={(e) => setNewBookTitle(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addBook()}
-                placeholder={t("tracking.addBookPlaceholder")}
-                className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-              />
-              <Button size="sm" onClick={addBook}>{t("common.add")}</Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {tab === "books" && <BooksTab />}
     </div>
   );
 }

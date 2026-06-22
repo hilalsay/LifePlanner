@@ -75,6 +75,8 @@ class BookEntryCreate(BaseModel):
     end_date: Optional[date] = None
     rating: Optional[int] = None
     notes: Optional[str] = None
+    cover_url: Optional[str] = None
+    review: Optional[str] = None
 
 
 class BookEntryUpdate(BaseModel):
@@ -88,6 +90,8 @@ class BookEntryUpdate(BaseModel):
     end_date: Optional[date] = None
     rating: Optional[int] = None
     notes: Optional[str] = None
+    cover_url: Optional[str] = None
+    review: Optional[str] = None
 
 
 class BookEntryOut(BaseModel):
@@ -102,6 +106,8 @@ class BookEntryOut(BaseModel):
     end_date: Optional[date]
     rating: Optional[int]
     notes: Optional[str]
+    cover_url: Optional[str]
+    review: Optional[str]
     created_at: datetime
 
     model_config = {"from_attributes": True}

@@ -376,7 +376,39 @@ export interface BookEntry {
   end_date?: string;
   rating?: number;
   notes?: string;
+  cover_url?: string;
+  review?: string;
   created_at: string;
+}
+
+export interface GoogleBookResult {
+  title: string;
+  author?: string;
+  cover_url?: string;
+}
+
+export async function searchGoogleBooks(query: string): Promise<GoogleBookResult[]> {
+  const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=5`;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return [];
+    const data = await response.json();
+    return (data.items ?? [])
+      .map((item: Record<string, unknown>) => {
+        const info = (item.volumeInfo ?? {}) as Record<string, unknown>;
+        const links = (info.imageLinks ?? {}) as Record<string, string>;
+        const thumbnail = links.thumbnail ?? links.smallThumbnail;
+        const authors = info.authors as string[] | undefined;
+        return {
+          title: (info.title as string) ?? "",
+          author: authors?.[0],
+          cover_url: thumbnail ? thumbnail.replace("http://", "https://") : undefined,
+        };
+      })
+      .filter((r: GoogleBookResult) => r.title);
+  } catch {
+    return [];
+  }
 }
 
 export interface WeeklyAIReview {
