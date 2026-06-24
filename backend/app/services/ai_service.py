@@ -60,12 +60,16 @@ async def _generate_text(system: Optional[str], prompt: str) -> Optional[str]:
     return await _gemini_generate(system, prompt)
 
 
-async def generate_motivational_message() -> str:
-    system = "You write short, witty, and genuinely motivational one-liners for a personal life planner."
+async def generate_motivational_message(language: str = "en") -> str:
+    lang_name = _LANG_NAME.get(language, "English")
+    system = (
+        "You write short, witty, and genuinely motivational one-liners for a personal "
+        f"life planner. Always write the message in {lang_name}."
+    )
     prompt = (
         "Generate one short (1-2 sentences), funny yet genuinely motivational message "
         "for someone using their personal life planner. Be witty, warm, and specific. "
-        "No hashtags. No emojis. Just the message text."
+        f"No hashtags. No emojis. Write it in {lang_name}. Just the message text."
     )
     text = await _generate_text(system, prompt)
     if not text:
@@ -74,8 +78,12 @@ async def generate_motivational_message() -> str:
     return text
 
 
-async def generate_weekly_review(week_data: dict) -> str:
-    system = "You are a thoughtful, direct, and supportive personal coach writing a weekly review."
+async def generate_weekly_review(week_data: dict, language: str = "en") -> str:
+    lang_name = _LANG_NAME.get(language, "English")
+    system = (
+        "You are a thoughtful, direct, and supportive personal coach writing a weekly "
+        f"review. Always write the entire review in {lang_name}."
+    )
 
     def _fmt(items):
         items = [str(i) for i in (items or []) if str(i).strip()]
@@ -92,7 +100,7 @@ Week data:
 - Avg mood: {week_data.get('avg_mood', 'N/A')} / 10
 - Avg energy: {week_data.get('avg_energy', 'N/A')} / 10
 
-Write a warm, honest, 3-paragraph weekly review. Reference specific tasks and priorities by name where it helps. Cover: what went well, what to improve, and one specific focus for the rest of the week. Be direct and supportive, not generic."""
+Write a warm, honest, 3-paragraph weekly review in {lang_name}. Reference specific tasks and priorities by name where it helps. Cover: what went well, what to improve, and one specific focus for the rest of the week. Be direct and supportive, not generic."""
 
     text = await _generate_text(system, prompt)
     if not text:

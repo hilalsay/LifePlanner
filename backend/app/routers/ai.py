@@ -30,10 +30,10 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 
 
 @router.get("/motivational")
-async def motivational_message(ai: bool = True):
+async def motivational_message(ai: bool = True, lang: str = "en"):
     if not ai:
         return {"message": get_local_message(), "source": "local"}
-    message = await generate_motivational_message()
+    message = await generate_motivational_message(lang)
     return {"message": message, "source": "ai"}
 
 
@@ -299,7 +299,8 @@ async def generate_review(
         "habit_completions": len(habit_entries),
     }
 
-    content = await generate_weekly_review(week_data)
+    language = (body.get("language") or "en") if isinstance(body, dict) else "en"
+    content = await generate_weekly_review(week_data, language)
     model_used = settings.ollama_model if (settings.ai_provider or "").lower() == "ollama" else "gemini-2.5-flash-lite"
 
     # One review per week: refresh the existing row in place instead of piling up duplicates.

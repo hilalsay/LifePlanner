@@ -45,7 +45,7 @@ function WeeklyReviewCard({ year, week, isCurrentWeek }: { year: number; week: n
   const generate = async () => {
     setGenerating(true);
     try {
-      const created = await aiApi.generateWeeklyReview();
+      const created = await aiApi.generateWeeklyReview(lang);
       setReviews((rs) => [created, ...rs.filter((r) => !(r.year === created.year && r.week_number === created.week_number))]);
     } finally {
       setGenerating(false);

@@ -27,16 +27,25 @@ export function MotivationalBanner() {
   const [loading, setLoading] = useState(false);
   const [source, setSource] = useState<"local" | "ai">("local");
 
+  const localMessage = () => {
+    const pool = LOCAL_FALLBACKS[lang] ?? LOCAL_FALLBACKS.en;
+    setMessage(pool[Math.floor(Math.random() * pool.length)]);
+    setSource("local");
+  };
+
   const fetchMessage = async (useAI = false) => {
+    // Non-AI path: use the localized fallback pool directly (no round-trip).
+    if (!useAI) {
+      localMessage();
+      return;
+    }
     setLoading(true);
     try {
-      const data = await aiApi.getMotivational(useAI);
+      const data = await aiApi.getMotivational(true, lang);
       setMessage(data.message);
       setSource(data.source as "local" | "ai");
     } catch {
-      const pool = LOCAL_FALLBACKS[lang] ?? LOCAL_FALLBACKS.en;
-      setMessage(pool[Math.floor(Math.random() * pool.length)]);
-      setSource("local");
+      localMessage();
     } finally {
       setLoading(false);
     }

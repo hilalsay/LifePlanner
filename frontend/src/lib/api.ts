@@ -184,12 +184,12 @@ export const trackingApi = {
 // ── AI ────────────────────────────────────────────────────────────────────────
 
 export const aiApi = {
-  getMotivational: (useAI = true) =>
-    request<{ message: string; source: string }>(`/ai/motivational?ai=${useAI}`),
+  getMotivational: (useAI = true, language = "en") =>
+    request<{ message: string; source: string }>(`/ai/motivational?ai=${useAI}&lang=${language}`),
   parseTask: (text: string) =>
     request<Partial<DailyTask>>("/ai/parse-task", { method: "POST", body: JSON.stringify({ text }) }),
-  generateWeeklyReview: () =>
-    request<WeeklyAIReview>("/ai/weekly-review", { method: "POST", body: JSON.stringify({}) }),
+  generateWeeklyReview: (language = "en") =>
+    request<WeeklyAIReview>("/ai/weekly-review", { method: "POST", body: JSON.stringify({ language }) }),
   getWeeklyReviews: () =>
     request<WeeklyAIReview[]>("/ai/weekly-reviews"),
   chat: (content: string, conversationId?: string, attachments?: DragItem[], language?: string) =>
