@@ -1,6 +1,5 @@
 import { FormEvent, useState } from "react";
 import { Link } from "react-router-dom";
-import { Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -45,7 +44,7 @@ export function RegisterPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 pb-4">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <Sparkles className="h-6 w-6 text-primary" />
+            <img src="/android-chrome-192x192.png" alt="" className="h-6 w-6 rounded" />
             <span className="text-xl font-bold tracking-tight">Life Planner</span>
           </div>
           <CardTitle className="text-center text-2xl">{t("auth.createAccount")}</CardTitle>

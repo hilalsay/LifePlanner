@@ -9,7 +9,6 @@ import {
   BarChart3,
   CalendarCheck2,
   Settings,
-  Sparkles,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -43,7 +42,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-14 items-center gap-2 border-b px-4">
-        <Sparkles className="h-5 w-5 text-primary" />
+        <img src="/android-chrome-192x192.png" alt="" className="h-5 w-5 rounded" />
         <span className="font-semibold tracking-tight">Life Planner</span>
       </div>
 
