@@ -31,16 +31,19 @@ export function TopBar({ title, assistantOpen, onToggleAssistant, onOpenMenu }: 
         <h1 className="text-base font-semibold">{title}</h1>
       </div>
       <div className="flex items-center gap-1">
+        <LanguageToggle />
         <Button
           variant="ghost"
-          size="icon"
           onClick={onToggleAssistant}
           title={t("topbar.assistant")}
-          className={cn(assistantOpen && "bg-primary/10 text-primary")}
+          className={cn("h-10 gap-1.5 px-2.5", assistantOpen && "bg-primary/10")}
         >
-          <Sparkles className="h-4 w-4" />
+          <Sparkles className="h-4 w-4 text-primary" />
+          <span className="text-sm">
+            <span className="font-bold text-primary">AI</span>
+            <span className="font-semibold">zen</span>
+          </span>
         </Button>
-        <LanguageToggle />
         <Button variant="ghost" size="icon" onClick={toggle} title={t("topbar.toggleTheme")}>
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
