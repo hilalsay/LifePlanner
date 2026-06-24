@@ -47,9 +47,9 @@ const en: Dict = {
   "assistant.send": "Send",
   "assistant.greeting":
     'Hey there! ✨ I\'m AIzen, think of me as your personal life coach. Share anything on your mind, like "I want to sleep better" or "help me build a consistent workout routine" — whether it\'s a big life goal or a small daily habit, I\'ll help you make it happen. What are we working on today? 🌟',
-  "assistant.placeholder": "Tell me about a goal, or drag one here…",
+  "assistant.placeholder": "Drag a goal here…",
   "assistant.placeholderAttached": "Ask about the attached…",
-  "assistant.footer": "Powered by Gemini · suggestions save to your plan.",
+  "assistant.footer": "Powered by Qwen · suggestions save to your plan.",
   "assistant.cooldown": "You can send again in {n}s…",
   "assistant.dropHere": "Drop to ask about this",
   "assistant.errorReach":
@@ -374,9 +374,9 @@ const tr: Dict = {
   "assistant.send": "Gönder",
   "assistant.greeting":
     'Selam! ✨ Ben AIzen, beni kişisel yaşam koçun gibi düşün. Aklındaki her şeyi paylaş, örneğin "daha iyi uyumak istiyorum" ya da "düzenli bir egzersiz rutini oluşturmama yardım et" — ister büyük bir yaşam hedefi olsun ister küçük bir günlük alışkanlık, gerçekleştirmene yardımcı olacağım. Bugün ne üzerinde çalışıyoruz? 🌟',
-  "assistant.placeholder": "Bir hedefinden bahset ya da buraya sürükle…",
+  "assistant.placeholder": "Hedefini buraya sürükle…",
   "assistant.placeholderAttached": "Ekli öğe hakkında sor…",
-  "assistant.footer": "Gemini ile çalışır · öneriler planına kaydedilir.",
+  "assistant.footer": "Qwen ile çalışır · öneriler planına kaydedilir.",
   "assistant.cooldown": "{n} sn sonra tekrar gönderebilirsin…",
   "assistant.dropHere": "Sormak için buraya bırak",
   "assistant.errorReach":
