@@ -36,8 +36,10 @@ info "Syncing frontend dependencies..."
 npm --prefix "$FRONTEND_DIR" install --no-audit --no-fund
 
 # 4. Rebuild the frontend bundle (oneshot service cleans caches + builds dist/)
+# Use restart, not start: a RemainAfterExit oneshot stays "active" after its
+# first run, so `start` would be a no-op and skip the rebuild.
 info "Rebuilding frontend..."
-sudo systemctl start lifeplanner-frontend.service
+sudo systemctl restart lifeplanner-frontend.service
 log "Frontend rebuilt -> $FRONTEND_DIR/dist"
 
 # 5. Restart the backend (runs alembic migrations on start)
