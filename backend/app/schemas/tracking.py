@@ -113,6 +113,12 @@ class BookEntryOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class GoogleBookResult(BaseModel):
+    title: str
+    author: Optional[str] = None
+    cover_url: Optional[str] = None
+
+
 class WeeklyAIReviewOut(BaseModel):
     id: uuid.UUID
     year: int

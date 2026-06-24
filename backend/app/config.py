@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql://lifeplanner:lifeplanner123@localhost:5432/life_planner"
     anthropic_api_key: str = ""
     gemini_api_key: str = ""
+    google_books_api_key: str = ""
 
     # AI provider for the assistant chat: "gemini" or "ollama"
     ai_provider: str = "gemini"

@@ -387,34 +387,14 @@ export interface GoogleBookResult {
   cover_url?: string;
 }
 
+// Search goes through our backend, which holds the Google Books API key and
+// normalizes covers (https + higher resolution) server-side.
 export async function searchGoogleBooks(query: string): Promise<GoogleBookResult[]> {
-  const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=5`;
   try {
-    const response = await fetch(url);
-    if (!response.ok) return [];
-    const data = await response.json();
-    return (data.items ?? [])
-      .map((item: Record<string, unknown>) => {
-        const info = (item.volumeInfo ?? {}) as Record<string, unknown>;
-        const links = (info.imageLinks ?? {}) as Record<string, string>;
-        const thumbnail = links.thumbnail ?? links.smallThumbnail;
-        const authors = info.authors as string[] | undefined;
-        return {
-          title: (info.title as string) ?? "",
-          author: authors?.[0],
-          cover_url: normalizeCoverUrl(thumbnail),
-        };
-      })
-      .filter((r: GoogleBookResult) => r.title);
+    return await request<GoogleBookResult[]>(`/tracking/books/search?q=${encodeURIComponent(query)}`);
   } catch {
     return [];
   }
-}
-
-// Force https and request a higher-resolution cover (zoom=2 instead of zoom=1).
-function normalizeCoverUrl(url?: string): string | undefined {
-  if (!url) return undefined;
-  return url.replace("http://", "https://").replace("zoom=1", "zoom=2");
 }
 
 // Fetch the single best-matching cover for a title (used while editing a book).

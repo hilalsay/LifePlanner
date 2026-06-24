@@ -1,17 +1,26 @@
 import uuid
 from datetime import date
 from typing import Optional
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user_id
 from app.models.tracking import MoodEntry, HealthEntry, BookEntry
 from app.schemas.tracking import (
     MoodEntryCreate, MoodEntryUpdate, MoodEntryOut,
     HealthEntryCreate, HealthEntryUpdate, HealthEntryOut,
-    BookEntryCreate, BookEntryUpdate, BookEntryOut,
+    BookEntryCreate, BookEntryUpdate, BookEntryOut, GoogleBookResult,
 )
+
+
+def _normalize_cover(url: Optional[str]) -> Optional[str]:
+    """Force https and request a higher-resolution Google Books cover."""
+    if not url:
+        return None
+    return url.replace("http://", "https://").replace("zoom=1", "zoom=2")
 
 router = APIRouter(prefix="/tracking", tags=["tracking"])
 
@@ -144,6 +153,39 @@ def list_books(
     if status:
         q = q.filter(BookEntry.status == status)
     return q.order_by(BookEntry.created_at.desc()).all()
+
+
+@router.get("/books/search", response_model=list[GoogleBookResult])
+async def search_books(
+    q: str = Query(..., min_length=1),
+    max_results: int = Query(5, ge=1, le=10),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    """Proxy Google Books search server-side so the API key never reaches the browser."""
+    params = {"q": q, "maxResults": max_results}
+    if settings.google_books_api_key:
+        params["key"] = settings.google_books_api_key
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get("https://www.googleapis.com/books/v1/volumes", params=params)
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception:
+        return []
+    results: list[GoogleBookResult] = []
+    for item in data.get("items", []):
+        info = item.get("volumeInfo", {})
+        title = info.get("title")
+        if not title:
+            continue
+        links = info.get("imageLinks", {})
+        authors = info.get("authors")
+        results.append(GoogleBookResult(
+            title=title,
+            author=authors[0] if authors else None,
+            cover_url=_normalize_cover(links.get("thumbnail") or links.get("smallThumbnail")),
+        ))
+    return results
 
 
 @router.post("/books", response_model=BookEntryOut, status_code=201)
