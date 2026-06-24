@@ -45,6 +45,10 @@ const KIND_META: Record<SuggestionKind, { icon: typeof Calendar; className: stri
   task: { icon: CheckSquare, className: "text-emerald-500" },
 };
 
+// Fallback for non-actionable / unknown kinds (e.g. "insight") the model may
+// emit. Without this, indexing KIND_META returns undefined and crashes render.
+const KIND_FALLBACK = { icon: Sparkles, className: "text-muted-foreground" };
+
 const ATTACH_ICON: Record<DragItemKind, typeof Calendar> = {
   monthly: Calendar,
   weekly: CalendarRange,
@@ -601,14 +605,17 @@ function SuggestionCard({
   onAdd: () => void;
 }) {
   const { t, lang } = useI18n();
-  const meta = KIND_META[suggestion.kind];
+  // Only the four planner kinds are actionable (persist() has a case for each);
+  // others (e.g. "insight") render as read-only cards with no Add button.
+  const actionable = suggestion.kind in KIND_META;
+  const meta = KIND_META[suggestion.kind] ?? KIND_FALLBACK;
   const Icon = meta.icon;
   return (
     <div className="flex items-start gap-3 rounded-lg border bg-background p-3">
       <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", meta.className)} />
       <div className="min-w-0 flex-1">
         <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-          {t(`kind.${suggestion.kind}`)}
+          {actionable ? t(`kind.${suggestion.kind}`) : suggestion.kind.replace(/_/g, " ")}
           {suggestion.date && (
             <span className="ml-1.5 normal-case text-primary">
               · {format(parseISO(suggestion.date), "EEE, MMM d", { locale: dateLocale(lang) })}
@@ -620,27 +627,29 @@ function SuggestionCard({
           <div className="mt-0.5 text-xs text-muted-foreground">{suggestion.description}</div>
         )}
       </div>
-      <Button
-        size="sm"
-        variant={added ? "secondary" : "default"}
-        onClick={onAdd}
-        disabled={added || saving}
-        className="shrink-0"
-      >
-        {added ? (
-          <>
-            <Check className="h-3.5 w-3.5" /> {t("suggestion.added")}
-          </>
-        ) : saving ? (
-          <>
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("suggestion.adding")}
-          </>
-        ) : (
-          <>
-            <Plus className="h-3.5 w-3.5" /> {t("suggestion.add")}
-          </>
-        )}
-      </Button>
+      {actionable && (
+        <Button
+          size="sm"
+          variant={added ? "secondary" : "default"}
+          onClick={onAdd}
+          disabled={added || saving}
+          className="shrink-0"
+        >
+          {added ? (
+            <>
+              <Check className="h-3.5 w-3.5" /> {t("suggestion.added")}
+            </>
+          ) : saving ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("suggestion.adding")}
+            </>
+          ) : (
+            <>
+              <Plus className="h-3.5 w-3.5" /> {t("suggestion.add")}
+            </>
+          )}
+        </Button>
+      )}
     </div>
   );
 }

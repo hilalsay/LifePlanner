@@ -96,6 +96,13 @@ Only return valid JSON, nothing else."""
 
 ALLOWED_KINDS = {"monthly", "weekly", "habit", "task"}
 
+# The model occasionally labels suggestions with non-canonical kinds; fold the
+# equivalent ones onto our vocabulary so they're recovered instead of dropped.
+KIND_SYNONYMS = {
+    "task_created": "task",
+    "schedule_suggestion": "task",
+}
+
 
 _LANG_NAME = {"en": "English", "tr": "Turkish"}
 
@@ -164,8 +171,11 @@ def _parse_chat_json(raw_text: str) -> dict:
         for s in raw_suggestions[:4]:
             if not isinstance(s, dict):  # model sometimes returns bare strings — skip them
                 continue
-            kind = str(s.get("kind", "")).lower().strip()
-            title = str(s.get("title", "")).strip()
+            # Accept the alternate shape the model sometimes emits
+            # ({"type": ..., "text": ...}) and fold synonym kinds onto our vocabulary.
+            kind = str(s.get("kind") or s.get("type") or "").lower().strip()
+            kind = KIND_SYNONYMS.get(kind, kind)
+            title = str(s.get("title") or s.get("text") or "").strip()
             if kind in ALLOWED_KINDS and title:
                 desc = str(s.get("description", "")).strip()
                 item = {"kind": kind, "title": title, "description": desc or None}
