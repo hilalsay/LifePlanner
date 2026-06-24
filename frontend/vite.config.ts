@@ -19,4 +19,16 @@ export default defineConfig({
       },
     },
   },
+  // `vite preview` (production serve) does not inherit `server.proxy`,
+  // so mirror the /api → backend proxy here too.
+  preview: {
+    host: "0.0.0.0",
+    port: 5173,
+    proxy: {
+      "/api": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+      },
+    },
+  },
 });
