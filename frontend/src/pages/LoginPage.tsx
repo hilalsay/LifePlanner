@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/LanguageContext";
+import { OAUTH_ENABLED } from "@/lib/features";
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -100,6 +101,8 @@ export function LoginPage() {
             </Button>
           </form>
 
+          {OAUTH_ENABLED && (
+          <>
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t" />
@@ -149,6 +152,8 @@ export function LoginPage() {
               GitHub
             </Button>
           </div>
+          </>
+          )}
 
           <p className="text-center text-sm text-muted-foreground">
             {t("auth.noAccount")}{" "}
