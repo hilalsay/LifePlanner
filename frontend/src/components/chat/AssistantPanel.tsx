@@ -447,7 +447,7 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
                 onClose={() => setShowPicker(false)}
               />
             ) : (
-              <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-4">
+              <div ref={scrollRef} className="flex-1 min-h-0 space-y-4 overflow-y-auto p-4">
                 {messages.map((m) => (
                   <MessageBubble
                     key={m.id}
@@ -461,8 +461,8 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
               </div>
             )}
 
-            {/* Composer — extra bottom padding clears the mobile bottom nav (h-16) */}
-            <div className="border-t px-3 pt-3 pb-20 md:pb-3">
+            {/* Composer — shrink-0 keeps it pinned; extra bottom padding clears the mobile bottom nav (h-16) */}
+            <div className="shrink-0 border-t px-3 pt-3 pb-20 md:pb-3">
               {attachments.length > 0 && (
                 <div className="mb-2 flex flex-wrap gap-1.5">
                   {attachments.map((a, i) => (
@@ -664,7 +664,7 @@ function PlanTab({ plan }: { plan: Suggestion[] }) {
     .filter((g) => g.items.length > 0);
 
   return (
-    <div className="flex-1 space-y-5 overflow-y-auto px-4 pt-4 pb-20 md:pb-4">
+    <div className="flex-1 min-h-0 space-y-5 overflow-y-auto px-4 pt-4 pb-20 md:pb-4">
       {plan.length === 0 ? (
         <p className="pt-8 text-center text-sm text-muted-foreground">
           {t("assistant.planEmpty")}
