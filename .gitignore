@@ -19,6 +19,7 @@ dist/
 # Node
 node_modules/
 dist/
+dev-dist/
 .vite/
 
 # Editor
