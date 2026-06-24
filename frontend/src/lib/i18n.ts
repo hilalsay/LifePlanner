@@ -143,6 +143,13 @@ const en: Dict = {
   "week.priorities": "Weekly Priorities",
   "week.noPriorities": "No priorities yet.",
   "week.addPriorityPlaceholder": "Add a priority...",
+  "week.aiReview": "AI Weekly Review",
+  "week.generateReview": "Generate Review",
+  "week.regenerateReview": "Regenerate",
+  "week.generatingReview": "Generating...",
+  "week.noReviewYet": "No review generated for this week yet.",
+  "week.reviewOnlyCurrentWeek": "Reviews can only be generated for the current week.",
+  "week.generatedAt": "Generated {date}",
 
   // Habit tracker
   "habits.trackerTitle": "Habit Tracker — Last 7 Days",
@@ -463,6 +470,13 @@ const tr: Dict = {
   "week.priorities": "Haftalık Öncelikler",
   "week.noPriorities": "Henüz öncelik yok.",
   "week.addPriorityPlaceholder": "Bir öncelik ekle...",
+  "week.aiReview": "AI Haftalık Değerlendirme",
+  "week.generateReview": "Değerlendirme Oluştur",
+  "week.regenerateReview": "Yeniden Oluştur",
+  "week.generatingReview": "Oluşturuluyor...",
+  "week.noReviewYet": "Bu hafta için henüz değerlendirme oluşturulmadı.",
+  "week.reviewOnlyCurrentWeek": "Değerlendirmeler yalnızca mevcut hafta için oluşturulabilir.",
+  "week.generatedAt": "{date} tarihinde oluşturuldu",
 
   // Habit tracker
   "habits.trackerTitle": "Alışkanlık Takibi — Son 7 Gün",

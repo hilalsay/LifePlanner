@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Plus, Check, Clock, X } from "lucide-react";
+import { Plus, Check, Clock, X, Loader2, Sparkles } from "lucide-react";
 import { format, startOfWeek, addWeeks, subWeeks, addDays, differenceInCalendarDays, parseISO, type Locale } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { planningApi, type WeeklyPriority } from "@/lib/api";
+import { planningApi, aiApi, type WeeklyPriority, type WeeklyAIReview } from "@/lib/api";
 import { getISOWeek, toDateString } from "@/lib/utils";
 import { setChatDragItem } from "@/lib/dragItem";
 import { useI18n } from "@/contexts/LanguageContext";
@@ -29,6 +29,71 @@ function weekDeadlineText(
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
+
+function WeeklyReviewCard({ year, week, isCurrentWeek }: { year: number; week: number; isCurrentWeek: boolean }) {
+  const { t, lang } = useI18n();
+  const locale = dateLocale(lang);
+  const [reviews, setReviews] = useState<WeeklyAIReview[]>([]);
+  const [generating, setGenerating] = useState(false);
+
+  useEffect(() => {
+    aiApi.getWeeklyReviews().then(setReviews).catch(console.error);
+  }, []);
+
+  const review = reviews.find((r) => r.year === year && r.week_number === week) ?? null;
+
+  const generate = async () => {
+    setGenerating(true);
+    try {
+      const created = await aiApi.generateWeeklyReview();
+      setReviews((rs) => [created, ...rs.filter((r) => !(r.year === created.year && r.week_number === created.week_number))]);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-violet-500" />
+            {t("week.aiReview")}
+          </CardTitle>
+          {isCurrentWeek && (
+            <Button size="sm" variant="outline" onClick={generate} disabled={generating} className="shrink-0">
+              {generating ? (
+                <><Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />{t("week.generatingReview")}</>
+              ) : review ? (
+                t("week.regenerateReview")
+              ) : (
+                t("week.generateReview")
+              )}
+            </Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {review ? (
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              {t("week.generatedAt", { date: format(parseISO(review.created_at), "MMM d, yyyy · HH:mm", { locale }) })}
+            </p>
+            <div className="space-y-3 text-sm leading-relaxed">
+              {review.content.split(/\n\n+/).map((para, i) => (
+                <p key={i}>{para.trim()}</p>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {isCurrentWeek ? t("week.noReviewYet") : t("week.reviewOnlyCurrentWeek")}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export function WeekView() {
   const { t, lang } = useI18n();
@@ -163,6 +228,9 @@ export function WeekView() {
           );
         })}
       </div>
+
+      {/* Weekly AI Review */}
+      <WeeklyReviewCard year={year} week={week} isCurrentWeek={isCurrentWeek} />
 
       {/* Priorities */}
       <Card>
