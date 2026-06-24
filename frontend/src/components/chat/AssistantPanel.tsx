@@ -392,7 +392,9 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
         <div className="flex h-14 items-center justify-between border-b px-4">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            <span className="font-semibold tracking-tight">{t("assistant.title")}</span>
+            <span className="tracking-tight text-[15px]">
+              <span className="font-extrabold">AI</span><span className="font-medium">zen</span>
+            </span>
           </div>
           <div className="flex items-center gap-0.5">
             <Button variant="ghost" size="icon" onClick={startNewChat} title={t("assistant.newChat")}>
