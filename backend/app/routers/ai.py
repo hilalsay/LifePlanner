@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user_id
 from app.models.planning import DailyTask, WeeklyPriority, MonthlyFocus, PlanningNote
@@ -301,7 +302,7 @@ async def generate_review(
         year=year,
         week_number=week,
         content=content,
-        model_used="claude",
+        model_used=(settings.ollama_model if (settings.ai_provider or "").lower() == "ollama" else "gemini-2.5-flash-lite"),
     )
     db.add(review)
     db.commit()

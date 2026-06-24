@@ -2,13 +2,6 @@ from typing import Optional
 from app.config import settings
 
 
-def get_anthropic_client():
-    if not settings.anthropic_api_key:
-        return None
-    import anthropic
-    return anthropic.Anthropic(api_key=settings.anthropic_api_key)
-
-
 def get_gemini_model():
     if not settings.gemini_api_key:
         return None
@@ -17,32 +10,72 @@ def get_gemini_model():
     return genai.GenerativeModel("gemini-2.5-flash-lite")
 
 
+async def _ollama_generate(system: Optional[str], prompt: str) -> Optional[str]:
+    """Plain-text (non-JSON) generation via the local Ollama model. None on failure."""
+    import httpx
+
+    base = settings.ollama_base_url.rstrip("/")
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+    payload = {
+        "model": settings.ollama_model,
+        "messages": messages,
+        "stream": False,
+        "options": {"temperature": 0.7},
+    }
+    headers = {"Host": settings.ollama_host_header} if settings.ollama_host_header else {}
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            resp = await client.post(f"{base}/api/chat", json=payload, headers=headers)
+            resp.raise_for_status()
+            return (resp.json().get("message", {}).get("content") or "").strip() or None
+    except Exception:
+        return None
+
+
+async def _gemini_generate(system: Optional[str], prompt: str) -> Optional[str]:
+    """Plain-text generation via Gemini. None on failure / missing key."""
+    if not settings.gemini_api_key:
+        return None
+    import google.generativeai as genai
+
+    genai.configure(api_key=settings.gemini_api_key)
+    model = genai.GenerativeModel("gemini-2.5-flash-lite", system_instruction=system or None)
+    try:
+        response = await model.generate_content_async(prompt)
+        return (response.text or "").strip() or None
+    except Exception:
+        return None
+
+
+async def _generate_text(system: Optional[str], prompt: str) -> Optional[str]:
+    """Provider-aware plain-text generation (mirrors the chat provider dispatch)."""
+    provider = (settings.ai_provider or "gemini").lower()
+    if provider == "ollama" and settings.ollama_base_url:
+        text = await _ollama_generate(system, prompt)
+        if text:
+            return text
+    return await _gemini_generate(system, prompt)
+
+
 async def generate_motivational_message() -> str:
-    client = get_anthropic_client()
-    if not client:
+    system = "You write short, witty, and genuinely motivational one-liners for a personal life planner."
+    prompt = (
+        "Generate one short (1-2 sentences), funny yet genuinely motivational message "
+        "for someone using their personal life planner. Be witty, warm, and specific. "
+        "No hashtags. No emojis. Just the message text."
+    )
+    text = await _generate_text(system, prompt)
+    if not text:
         from app.services.motivational import get_local_message
         return get_local_message()
-
-    response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=150,
-        messages=[{
-            "role": "user",
-            "content": (
-                "Generate one short (1-2 sentences), funny yet genuinely motivational message "
-                "for someone using their personal life planner. Be witty, warm, and specific. "
-                "No hashtags. No emojis. Just the message text."
-            ),
-        }],
-    )
-    return response.content[0].text.strip()
+    return text
 
 
 async def generate_weekly_review(week_data: dict) -> str:
-    client = get_anthropic_client()
-    if not client:
-        return "AI review unavailable — add your ANTHROPIC_API_KEY to .env to enable this feature."
-
+    system = "You are a thoughtful, direct, and supportive personal coach writing a weekly review."
     prompt = f"""You are a thoughtful personal coach reviewing someone's week.
 
 Week data:
@@ -55,12 +88,10 @@ Week data:
 
 Write a warm, honest, 3-paragraph weekly review. Cover: what went well, what to improve, and one specific focus for next week. Be direct and supportive, not generic."""
 
-    response = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=600,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return response.content[0].text.strip()
+    text = await _generate_text(system, prompt)
+    if not text:
+        return "AI review unavailable — configure an AI provider (Ollama or Gemini) in backend/.env to enable this feature."
+    return text
 
 
 async def parse_natural_language_task(text: str) -> dict:

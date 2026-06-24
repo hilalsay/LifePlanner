@@ -55,4 +55,4 @@ class WeeklyAIReview(BaseModel):
     year: Mapped[int] = mapped_column(Integer)
     week_number: Mapped[int] = mapped_column(Integer)
     content: Mapped[str] = mapped_column(Text)
-    model_used: Mapped[str] = mapped_column(String(100), default="claude")
+    model_used: Mapped[str] = mapped_column(String(100), default="ai")
