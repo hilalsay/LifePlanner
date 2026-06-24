@@ -1,0 +1,19 @@
+[Unit]
+Description=Life Planner frontend build (vite -> dist/, served by nginx)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=hilal
+Group=hilal
+WorkingDirectory=/home/hilal/LifePlanner/frontend
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+# Clean caches/old output first so the build can never serve a stale bundle.
+ExecStartPre=/bin/rm -rf /home/hilal/LifePlanner/frontend/dist /home/hilal/LifePlanner/frontend/node_modules/.vite
+ExecStart=/usr/bin/npm run build
+TimeoutStartSec=600
+
+[Install]
+WantedBy=multi-user.target

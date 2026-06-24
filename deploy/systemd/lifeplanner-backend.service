@@ -1,0 +1,19 @@
+[Unit]
+Description=Life Planner backend (FastAPI/uvicorn)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=hilal
+Group=hilal
+WorkingDirectory=/home/hilal/LifePlanner/backend
+ExecStartPre=/bin/bash -c 'for i in $(seq 1 30); do pg_isready -h localhost -p 5432 -q && exit 0; sleep 1; done; echo "postgres not ready" >&2; exit 1'
+ExecStartPre=/home/hilal/LifePlanner/backend/venv/bin/alembic upgrade head
+ExecStart=/home/hilal/LifePlanner/backend/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=3
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target
