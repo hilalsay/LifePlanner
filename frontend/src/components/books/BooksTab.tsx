@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { BookOpen, Loader2, Star } from "lucide-react";
+import { Loader2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trackingApi, searchGoogleBooks, type BookEntry, type GoogleBookResult } from "@/lib/api";
-import { BookDetailModal, StatusPill } from "./BookDetailModal";
+import { BookDetailModal, StatusPill, BookCover } from "./BookDetailModal";
 import { useI18n } from "@/contexts/LanguageContext";
 
 function MiniStars({ rating }: { rating?: number }) {
@@ -109,13 +109,11 @@ export function BooksTab() {
               onClick={() => setSelectedBook(book)}
               className="w-full text-left rounded-lg border px-3 py-3 hover:bg-muted/50 active:bg-muted transition-colors flex gap-3 items-start min-h-[80px]"
             >
-              <div className="shrink-0 w-12 h-[64px] sm:w-14 sm:h-[72px] rounded overflow-hidden bg-muted flex items-center justify-center">
-                {book.cover_url ? (
-                  <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" loading="lazy" />
-                ) : (
-                  <BookOpen className="h-5 w-5 text-muted-foreground/40" />
-                )}
-              </div>
+              <BookCover
+                url={book.cover_url}
+                alt={book.title}
+                className="shrink-0 w-12 h-[64px] sm:w-14 sm:h-[72px] rounded overflow-hidden"
+              />
               <div className="flex-1 min-w-0 space-y-1 pt-0.5">
                 {/* Full title — wraps to multiple lines, never truncated */}
                 <p className="text-sm font-medium leading-snug break-words whitespace-normal">{book.title}</p>
@@ -172,13 +170,12 @@ export function BooksTab() {
                     onClick={() => selectResult(r)}
                     className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted transition-colors text-left border-b last:border-b-0"
                   >
-                    <div className="shrink-0 h-11 w-8 rounded overflow-hidden bg-muted flex items-center justify-center">
-                      {r.cover_url ? (
-                        <img src={r.cover_url} alt={r.title} className="h-full w-full object-cover" />
-                      ) : (
-                        <BookOpen className="h-4 w-4 text-muted-foreground/40" />
-                      )}
-                    </div>
+                    <BookCover
+                      url={r.cover_url}
+                      alt={r.title}
+                      className="shrink-0 h-11 w-8 rounded overflow-hidden"
+                      iconClassName="h-4 w-4 text-muted-foreground/40"
+                    />
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{r.title}</p>
                       {r.author && <p className="text-xs text-muted-foreground truncate">{r.author}</p>}

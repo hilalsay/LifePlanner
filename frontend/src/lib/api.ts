@@ -402,13 +402,25 @@ export async function searchGoogleBooks(query: string): Promise<GoogleBookResult
         return {
           title: (info.title as string) ?? "",
           author: authors?.[0],
-          cover_url: thumbnail ? thumbnail.replace("http://", "https://") : undefined,
+          cover_url: normalizeCoverUrl(thumbnail),
         };
       })
       .filter((r: GoogleBookResult) => r.title);
   } catch {
     return [];
   }
+}
+
+// Force https and request a higher-resolution cover (zoom=2 instead of zoom=1).
+function normalizeCoverUrl(url?: string): string | undefined {
+  if (!url) return undefined;
+  return url.replace("http://", "https://").replace("zoom=1", "zoom=2");
+}
+
+// Fetch the single best-matching cover for a title (used while editing a book).
+export async function fetchBookCover(title: string): Promise<string | undefined> {
+  const [best] = await searchGoogleBooks(title);
+  return best?.cover_url;
 }
 
 export interface WeeklyAIReview {

@@ -1,8 +1,42 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Star, Trash2, BookOpen } from "lucide-react";
+import { X, Star, Trash2, BookOpen, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { trackingApi, type BookEntry } from "@/lib/api";
+import { trackingApi, fetchBookCover, type BookEntry } from "@/lib/api";
 import { useI18n } from "@/contexts/LanguageContext";
+
+// Renders a cover image, falling back to a book icon when there's no URL
+// or the image fails to load.
+export function BookCover({
+  url,
+  alt,
+  className,
+  iconClassName,
+}: {
+  url?: string;
+  alt: string;
+  className?: string;
+  iconClassName?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [url]);
+
+  if (!url || failed) {
+    return (
+      <div className={`flex items-center justify-center bg-muted ${className ?? ""}`}>
+        <BookOpen className={iconClassName ?? "h-5 w-5 text-muted-foreground/40"} />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={url}
+      alt={alt}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className={`object-cover bg-muted ${className ?? ""}`}
+    />
+  );
+}
 
 export const STATUS_STYLES = {
   reading:   { emoji: "📖", labelKey: "tracking.bookReading",   classes: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
@@ -63,6 +97,9 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
   const [showReviewPrompt, setShowReviewPrompt] = useState(false);
 
   const [title, setTitle] = useState(book.title);
+  const [coverUrl, setCoverUrl] = useState(book.cover_url ?? "");
+  const [fetchingCover, setFetchingCover] = useState(false);
+  const coverDebounceRef = useRef<ReturnType<typeof setTimeout>>();
   const [author, setAuthor] = useState(book.author ?? "");
   const [genre, setGenre] = useState(book.genre ?? "");
   const [status, setStatus] = useState(book.status);
@@ -83,6 +120,26 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
   // Reset confirm-delete if the book changes while the modal is open
   useEffect(() => { setConfirmDelete(false); }, [book.id]);
 
+  // Cancel any pending cover lookup on unmount
+  useEffect(() => () => clearTimeout(coverDebounceRef.current), []);
+
+  // Look up a fresh cover 800ms after the user stops editing the title.
+  const handleTitleChange = (value: string) => {
+    setTitle(value);
+    clearTimeout(coverDebounceRef.current);
+    const trimmed = value.trim();
+    if (!trimmed || trimmed === book.title) {
+      setFetchingCover(false);
+      return;
+    }
+    setFetchingCover(true);
+    coverDebounceRef.current = setTimeout(async () => {
+      const found = await fetchBookCover(trimmed);
+      if (found) setCoverUrl(found);
+      setFetchingCover(false);
+    }, 800);
+  };
+
   const handleStatusChange = (newStatus: string) => {
     setStatus(newStatus);
     if (newStatus === "completed" && !rating && !review) {
@@ -100,6 +157,7 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
     try {
       const updated = await trackingApi.updateBook(book.id, {
         title,
+        cover_url: coverUrl || undefined,
         author: author || undefined,
         genre: genre || undefined,
         status,
@@ -137,11 +195,12 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
 
         {/* Header */}
         <div className="flex items-start gap-3 px-4 pt-2 pb-3 border-b shrink-0">
-          <div className="shrink-0 w-14 h-[76px] sm:w-16 sm:h-[84px] rounded-lg overflow-hidden bg-muted flex items-center justify-center">
-            {book.cover_url ? (
-              <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
-            ) : (
-              <BookOpen className="h-7 w-7 text-muted-foreground/40" />
+          <div className="relative shrink-0 w-14 h-[76px] sm:w-16 sm:h-[84px] rounded-lg overflow-hidden">
+            <BookCover url={coverUrl} alt={title} className="w-full h-full" iconClassName="h-7 w-7 text-muted-foreground/40" />
+            {fetchingCover && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                <Loader2 className="h-5 w-5 animate-spin text-white" />
+              </div>
             )}
           </div>
           <div className="flex-1 min-w-0 pt-0.5">
@@ -188,7 +247,7 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
           <div className="space-y-3">
             <div>
               <label className={labelCls}>{t("tracking.bookTitle")}</label>
-              <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} />
+              <input value={title} onChange={(e) => handleTitleChange(e.target.value)} className={inputCls} />
             </div>
             <div>
               <label className={labelCls}>{t("tracking.bookAuthor")}</label>
