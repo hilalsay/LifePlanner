@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Moon, Sun, Languages, Check, LogOut, User as UserIcon, Loader2, Upload, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useTheme } from "@/hooks/useTheme";
+import { useTheme } from "@/contexts/ThemeContext";
 import { useI18n } from "@/contexts/LanguageContext";
 import { usePreferences } from "@/contexts/PreferencesContext";
 import { useAuth } from "@/contexts/AuthContext";

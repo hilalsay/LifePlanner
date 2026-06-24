@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -18,6 +19,7 @@ import { SettingsPage } from "@/pages/SettingsPage";
 
 export default function App() {
   return (
+    <ThemeProvider>
     <LanguageProvider>
       <PreferencesProvider>
       <AuthProvider>
@@ -43,5 +45,6 @@ export default function App() {
       </AuthProvider>
       </PreferencesProvider>
     </LanguageProvider>
+    </ThemeProvider>
   );
 }
