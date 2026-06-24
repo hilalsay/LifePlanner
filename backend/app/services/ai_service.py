@@ -76,17 +76,23 @@ async def generate_motivational_message() -> str:
 
 async def generate_weekly_review(week_data: dict) -> str:
     system = "You are a thoughtful, direct, and supportive personal coach writing a weekly review."
-    prompt = f"""You are a thoughtful personal coach reviewing someone's week.
+
+    def _fmt(items):
+        items = [str(i) for i in (items or []) if str(i).strip()]
+        return ", ".join(items) if items else "none"
+
+    prompt = f"""You are a thoughtful personal coach reviewing someone's week so far (Monday through today).
 
 Week data:
-- Completed tasks: {week_data.get('completed_tasks', 0)} / {week_data.get('total_tasks', 0)}
-- Active habits: {week_data.get('active_habits', [])}
+- Tasks completed: {week_data.get('completed_tasks', 0)} of {week_data.get('total_tasks', 0)}
+- Completed tasks: {_fmt(week_data.get('completed_task_titles'))}
+- Still pending / missed: {_fmt(week_data.get('pending_task_titles'))}
+- Weekly priorities: {_fmt(week_data.get('priorities'))}
+- Active habits: {_fmt(week_data.get('active_habits'))} ({week_data.get('habit_completions', 0)} check-ins this week)
 - Avg mood: {week_data.get('avg_mood', 'N/A')} / 10
 - Avg energy: {week_data.get('avg_energy', 'N/A')} / 10
-- Weekly priorities: {week_data.get('priorities', [])}
-- Notes: {week_data.get('notes', '')}
 
-Write a warm, honest, 3-paragraph weekly review. Cover: what went well, what to improve, and one specific focus for next week. Be direct and supportive, not generic."""
+Write a warm, honest, 3-paragraph weekly review. Reference specific tasks and priorities by name where it helps. Cover: what went well, what to improve, and one specific focus for the rest of the week. Be direct and supportive, not generic."""
 
     text = await _generate_text(system, prompt)
     if not text:

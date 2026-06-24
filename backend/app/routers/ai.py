@@ -248,12 +248,14 @@ async def generate_review(
     year, week = iso.year, iso.week
 
     week_start = today - timedelta(days=today.weekday())
-    week_end = week_start + timedelta(days=6)
+    # Only review days that have actually happened (Monday through today),
+    # not the remainder of the week that's still in the future.
+    review_end = today
 
     tasks = db.query(DailyTask).filter(
         DailyTask.user_id == user_id,
         DailyTask.task_date >= week_start,
-        DailyTask.task_date <= week_end,
+        DailyTask.task_date <= review_end,
         DailyTask.is_deleted == False,
     ).all()
 
@@ -267,7 +269,7 @@ async def generate_review(
     mood_entries = db.query(MoodEntry).filter(
         MoodEntry.user_id == user_id,
         MoodEntry.entry_date >= week_start,
-        MoodEntry.entry_date <= week_end,
+        MoodEntry.entry_date <= review_end,
         MoodEntry.is_deleted == False,
     ).all()
 
@@ -280,7 +282,7 @@ async def generate_review(
     habit_entries = db.query(HabitEntry).filter(
         HabitEntry.user_id == user_id,
         HabitEntry.entry_date >= week_start,
-        HabitEntry.entry_date <= week_end,
+        HabitEntry.entry_date <= review_end,
         HabitEntry.completed == True,
         HabitEntry.is_deleted == False,
     ).all()
@@ -288,6 +290,8 @@ async def generate_review(
     week_data = {
         "total_tasks": len(tasks),
         "completed_tasks": sum(1 for t in tasks if t.is_completed),
+        "completed_task_titles": [t.title for t in tasks if t.is_completed],
+        "pending_task_titles": [t.title for t in tasks if not t.is_completed],
         "priorities": [p.title for p in priorities],
         "avg_mood": round(sum(m.mood_score for m in mood_entries) / len(mood_entries), 1) if mood_entries else None,
         "avg_energy": round(sum(m.energy_score for m in mood_entries) / len(mood_entries), 1) if mood_entries else None,
@@ -296,15 +300,29 @@ async def generate_review(
     }
 
     content = await generate_weekly_review(week_data)
+    model_used = settings.ollama_model if (settings.ai_provider or "").lower() == "ollama" else "gemini-2.5-flash-lite"
 
-    review = WeeklyAIReview(
-        user_id=user_id,
-        year=year,
-        week_number=week,
-        content=content,
-        model_used=(settings.ollama_model if (settings.ai_provider or "").lower() == "ollama" else "gemini-2.5-flash-lite"),
-    )
-    db.add(review)
+    # One review per week: refresh the existing row in place instead of piling up duplicates.
+    review = db.query(WeeklyAIReview).filter(
+        WeeklyAIReview.user_id == user_id,
+        WeeklyAIReview.year == year,
+        WeeklyAIReview.week_number == week,
+        WeeklyAIReview.is_deleted == False,
+    ).order_by(WeeklyAIReview.created_at.desc()).first()
+
+    if review:
+        review.content = content
+        review.model_used = model_used
+        review.created_at = func.now()  # reflect the latest generation time
+    else:
+        review = WeeklyAIReview(
+            user_id=user_id,
+            year=year,
+            week_number=week,
+            content=content,
+            model_used=model_used,
+        )
+        db.add(review)
     db.commit()
     db.refresh(review)
     return review
