@@ -121,9 +121,12 @@ const en: Dict = {
   "auth.signUpLink": "Sign up",
   "auth.signInLink": "Sign in",
   "auth.passwordMin8Error": "Password must be at least 8 characters.",
-  "auth.registrationFailed": "Registration failed",
-  "auth.signInFailed": "Sign in failed",
+  "auth.registrationFailed": "Registration failed. Please try again.",
+  "auth.signInFailed": "Sign in failed. Please try again.",
+  "auth.invalidCredentials": "Incorrect email or password.",
+  "auth.emailTaken": "An account with this email already exists.",
   "auth.oauthFailed": "OAuth sign-in failed. Please try again.",
+  "tracking.bookSearchUnavailable": "Book search is unavailable right now.",
 
   // Monthly focus detail
   "common.saving": "Saving…",
@@ -465,9 +468,12 @@ const tr: Dict = {
   "auth.signUpLink": "Kayıt ol",
   "auth.signInLink": "Giriş yap",
   "auth.passwordMin8Error": "Şifre en az 8 karakter olmalı.",
-  "auth.registrationFailed": "Kayıt başarısız",
-  "auth.signInFailed": "Giriş başarısız",
+  "auth.registrationFailed": "Kayıt başarısız. Lütfen tekrar dene.",
+  "auth.signInFailed": "Giriş başarısız. Lütfen tekrar dene.",
+  "auth.invalidCredentials": "E-posta veya şifre hatalı.",
+  "auth.emailTaken": "Bu e-posta adresiyle zaten bir hesap var.",
   "auth.oauthFailed": "OAuth ile giriş başarısız. Lütfen tekrar dene.",
+  "tracking.bookSearchUnavailable": "Kitap arama şu an kullanılamıyor.",
 
   // Monthly focus detail
   "common.saving": "Kaydediliyor…",

@@ -32,7 +32,9 @@ export function LoginPage() {
       await login(email, password);
       window.location.href = "/";
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("auth.signInFailed"));
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "Invalid email or password") setError(t("auth.invalidCredentials"));
+      else setError(t("auth.signInFailed"));
     } finally {
       setIsSubmitting(false);
     }

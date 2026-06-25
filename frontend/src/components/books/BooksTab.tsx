@@ -27,6 +27,7 @@ export function BooksTab() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<GoogleBookResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [selectedResult, setSelectedResult] = useState<GoogleBookResult | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
@@ -53,6 +54,7 @@ export function BooksTab() {
   const handleQueryChange = (value: string) => {
     setQuery(value);
     setSelectedResult(null);
+    setSearchError(null);
     clearTimeout(debounceRef.current);
     if (!value.trim()) {
       setResults([]);
@@ -61,10 +63,17 @@ export function BooksTab() {
     }
     setSearching(true);
     debounceRef.current = setTimeout(async () => {
-      const found = await searchGoogleBooks(value);
-      setResults(found);
-      setShowDropdown(found.length > 0);
-      setSearching(false);
+      try {
+        const found = await searchGoogleBooks(value);
+        setResults(found);
+        setShowDropdown(found.length > 0);
+      } catch (err) {
+        setResults([]);
+        setShowDropdown(false);
+        setSearchError(err instanceof Error ? err.message : t("tracking.bookSearchUnavailable"));
+      } finally {
+        setSearching(false);
+      }
     }, 500);
   };
 
@@ -159,6 +168,11 @@ export function BooksTab() {
                 {t("common.add")}
               </Button>
             </div>
+
+            {/* Search error */}
+            {searchError && (
+              <p className="mt-1.5 text-xs text-destructive">{searchError}</p>
+            )}
 
             {/* Google Books dropdown */}
             {showDropdown && results.length > 0 && (

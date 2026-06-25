@@ -168,10 +168,13 @@ async def search_books(
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get("https://www.googleapis.com/books/v1/volumes", params=params)
-            resp.raise_for_status()
-            data = resp.json()
     except Exception:
-        return []
+        raise HTTPException(503, "Book search is temporarily unavailable.")
+    if resp.status_code == 429:
+        raise HTTPException(503, "Book search quota exceeded. Add a GOOGLE_BOOKS_API_KEY to your .env to restore it.")
+    if not resp.is_success:
+        raise HTTPException(503, "Book search is temporarily unavailable.")
+    data = resp.json()
     results: list[GoogleBookResult] = []
     for item in data.get("items", []):
         info = item.get("volumeInfo", {})

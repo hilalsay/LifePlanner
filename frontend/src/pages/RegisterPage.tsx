@@ -30,7 +30,9 @@ export function RegisterPage() {
       await register(email, password, displayName || undefined);
       window.location.href = "/";
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("auth.registrationFailed"));
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "Email already registered") setError(t("auth.emailTaken"));
+      else setError(t("auth.registrationFailed"));
     } finally {
       setIsSubmitting(false);
     }

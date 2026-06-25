@@ -44,8 +44,13 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error("Session expired");
   }
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(err || `HTTP ${res.status}`);
+    const text = await res.text();
+    let message = text;
+    try {
+      const data = JSON.parse(text);
+      if (typeof data.detail === "string") message = data.detail;
+    } catch { /* not JSON — use raw text */ }
+    throw new Error(message || `HTTP ${res.status}`);
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
@@ -390,11 +395,7 @@ export interface GoogleBookResult {
 // Search goes through our backend, which holds the Google Books API key and
 // normalizes covers (https + higher resolution) server-side.
 export async function searchGoogleBooks(query: string): Promise<GoogleBookResult[]> {
-  try {
-    return await request<GoogleBookResult[]>(`/tracking/books/search?q=${encodeURIComponent(query)}`);
-  } catch {
-    return [];
-  }
+  return request<GoogleBookResult[]>(`/tracking/books/search?q=${encodeURIComponent(query)}`);
 }
 
 // Fetch the single best-matching cover for a title (used while editing a book).
