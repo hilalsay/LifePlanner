@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/LanguageContext";
-import { OAUTH_ENABLED } from "@/lib/features";
+import { OAUTH_ENABLED, GITHUB_ENABLED } from "@/lib/features";
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -113,7 +113,7 @@ export function LoginPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className={GITHUB_ENABLED ? "grid grid-cols-2 gap-3" : "grid grid-cols-1 gap-3"}>
             <Button
               type="button"
               variant="outline"
@@ -141,6 +141,7 @@ export function LoginPage() {
               Google
             </Button>
 
+            {GITHUB_ENABLED && (
             <Button
               type="button"
               variant="outline"
@@ -152,6 +153,7 @@ export function LoginPage() {
               </svg>
               GitHub
             </Button>
+            )}
           </div>
           </>
           )}
