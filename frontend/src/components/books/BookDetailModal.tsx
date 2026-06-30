@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Star, Trash2, BookOpen, Loader2 } from "lucide-react";
+import { X, Star, Trash2, BookOpen, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { trackingApi, fetchBookCover, type BookEntry } from "@/lib/api";
 import { useI18n } from "@/contexts/LanguageContext";
@@ -93,6 +93,8 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
   const { t } = useI18n();
   const reviewSectionRef = useRef<HTMLDivElement>(null);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showReviewPrompt, setShowReviewPrompt] = useState(false);
 
@@ -119,6 +121,9 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
 
   // Reset confirm-delete if the book changes while the modal is open
   useEffect(() => { setConfirmDelete(false); }, [book.id]);
+
+  // Clear the "saved" confirmation timer on unmount
+  useEffect(() => () => clearTimeout(savedTimerRef.current), []);
 
   // Cancel any pending cover lookup on unmount
   useEffect(() => () => clearTimeout(coverDebounceRef.current), []);
@@ -170,6 +175,9 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
         current_page: currentPage ? Number(currentPage) : undefined,
       });
       onUpdated(updated);
+      setSaved(true);
+      clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = setTimeout(() => setSaved(false), 2500);
     } finally {
       setSaving(false);
     }
@@ -185,7 +193,7 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
   const labelCls = "text-xs font-medium text-muted-foreground mb-1 block";
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col">
+    <div className="fixed inset-0 z-[60] flex flex-col">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative mt-auto sm:m-auto sm:w-full sm:max-w-lg flex flex-col max-h-[92dvh] rounded-t-2xl sm:rounded-2xl bg-background shadow-2xl overflow-hidden">
@@ -309,6 +317,16 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
             </div>
           </div>
         </div>
+
+        {/* Saved confirmation */}
+        {saved && (
+          <div className="px-4 pt-3 shrink-0">
+            <div className="flex items-center justify-center gap-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 px-3 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+              <Check className="h-4 w-4" />
+              {t("common.saved")}
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="border-t px-4 py-3 flex gap-3 bg-background shrink-0">

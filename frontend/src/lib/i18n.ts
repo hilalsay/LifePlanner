@@ -130,6 +130,7 @@ const en: Dict = {
 
   // Monthly focus detail
   "common.saving": "Saving…",
+  "common.saved": "Saved successfully",
   "common.doneCount": "{done} / {total} done",
   "focusDetail.detailPlanPlaceholder": "Detail plan — what does this focus involve? Key steps, context, why it matters…",
   "focusDetail.deleteFocus": "Delete focus",
@@ -477,6 +478,7 @@ const tr: Dict = {
 
   // Monthly focus detail
   "common.saving": "Kaydediliyor…",
+  "common.saved": "Başarıyla kaydedildi",
   "common.doneCount": "{done} / {total} tamam",
   "focusDetail.detailPlanPlaceholder": "Detay planı — bu odak neyi içeriyor? Önemli adımlar, bağlam, neden önemli…",
   "focusDetail.deleteFocus": "Odağı sil",
