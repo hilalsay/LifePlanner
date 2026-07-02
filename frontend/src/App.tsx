@@ -5,6 +5,7 @@ import { PreferencesProvider } from "@/contexts/PreferencesContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Layout } from "@/components/layout/Layout";
+import { LandingPage } from "@/pages/LandingPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { RegisterPage } from "@/pages/RegisterPage";
 import { DayView } from "@/pages/DayView";
@@ -25,11 +26,12 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
         <Routes>
+          <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
-              <Route path="/" element={<DayView />} />
+              <Route path="/today" element={<DayView />} />
               <Route path="/week" element={<WeekView />} />
               <Route path="/month" element={<MonthView />} />
               <Route path="/year" element={<YearView />} />

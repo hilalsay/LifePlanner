@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/LanguageContext";
 
 const nav = [
-  { to: "/", icon: CalendarDays, key: "nav.today" },
+  { to: "/today", icon: CalendarDays, key: "nav.today" },
   { to: "/week", icon: CalendarRange, key: "nav.week" },
   { to: "/month", icon: Calendar, key: "nav.month" },
   { to: "/year", icon: LayoutGrid, key: "nav.year" },
@@ -50,7 +50,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         <ul className="space-y-1 px-2">
           {nav.map(({ to, icon: Icon, key }) => (
             <li key={to}>
-              <NavLink to={to} end={to === "/"} onClick={onNavigate} className={linkClass}>
+              <NavLink to={to} end={to === "/today"} onClick={onNavigate} className={linkClass}>
                 <Icon className="h-4 w-4 shrink-0" />
                 {t(key)}
               </NavLink>

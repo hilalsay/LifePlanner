@@ -28,7 +28,7 @@ export function RegisterPage() {
     setIsSubmitting(true);
     try {
       await register(email, password, displayName || undefined);
-      window.location.href = "/";
+      window.location.href = "/today";
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (msg === "Email already registered") setError(t("auth.emailTaken"));

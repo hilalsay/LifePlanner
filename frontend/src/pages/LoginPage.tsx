@@ -30,7 +30,7 @@ export function LoginPage() {
     setIsSubmitting(true);
     try {
       await login(email, password);
-      window.location.href = "/";
+      window.location.href = "/today";
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
       if (msg === "Invalid email or password") setError(t("auth.invalidCredentials"));

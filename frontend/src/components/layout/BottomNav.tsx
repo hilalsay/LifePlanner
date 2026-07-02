@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useI18n } from "@/contexts/LanguageContext";
 
 const nav = [
-  { to: "/", icon: CalendarDays, key: "nav.today" },
+  { to: "/today", icon: CalendarDays, key: "nav.today" },
   { to: "/week", icon: CalendarRange, key: "nav.week" },
   { to: "/month", icon: Calendar, key: "nav.month" },
   { to: "/habits", icon: Flame, key: "nav.habits" },
@@ -20,7 +20,7 @@ export function BottomNav() {
           <li key={to} className="flex-1">
             <NavLink
               to={to}
-              end={to === "/"}
+              end={to === "/today"}
               className={({ isActive }) =>
                 cn(
                   "flex h-full min-h-[44px] flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors",
