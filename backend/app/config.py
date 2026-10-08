@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     ollama_model: str = "qwen2.5:3b"
     ollama_host_header: str = "127.0.0.1"  # Ollama's DNS-rebind guard expects a localhost Host
 
+    # External OpenAI-compatible LLM API (e.g. NVIDIA NIM / EVREN), only for users with is_admin
+    external_ai_base_url: str = ""
+    external_ai_api_key: str = ""
+    external_ai_model: str = ""
+
     # JWT
     jwt_secret_key: str = "CHANGE_ME_USE_openssl_rand_-hex_32_IN_PRODUCTION"
     jwt_algorithm: str = "HS256"

@@ -4,12 +4,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user_id
 from app.models.planning import DailyTask, WeeklyPriority, MonthlyFocus, PlanningNote
 from app.models.habits import Habit, HabitEntry
 from app.models.tracking import MoodEntry, WeeklyAIReview
 from app.models.chat import Conversation, ChatMessage
+from app.models.user import User
 from app.schemas.tracking import WeeklyAIReviewOut
 from app.schemas.chat import (
     ConversationOut,
@@ -29,10 +31,10 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 
 
 @router.get("/motivational")
-async def motivational_message(ai: bool = True):
+async def motivational_message(ai: bool = True, lang: str = "en"):
     if not ai:
         return {"message": get_local_message(), "source": "local"}
-    message = await generate_motivational_message()
+    message = await generate_motivational_message(lang)
     return {"message": message, "source": "ai"}
 
 
@@ -213,7 +215,11 @@ async def chat(
     ))
 
     # Call the model with the plan context.
-    result = await chat_with_assistant(history, _plan_context(db, user_id), req.language)
+    user = db.get(User, user_id)
+    result = await chat_with_assistant(
+        history, _plan_context(db, user_id), req.language,
+        use_external=bool(user and user.is_admin),
+    )
 
     # Persist the assistant's reply (with its suggestions).
     db.add(ChatMessage(
@@ -247,12 +253,14 @@ async def generate_review(
     year, week = iso.year, iso.week
 
     week_start = today - timedelta(days=today.weekday())
-    week_end = week_start + timedelta(days=6)
+    # Only review days that have actually happened (Monday through today),
+    # not the remainder of the week that's still in the future.
+    review_end = today
 
     tasks = db.query(DailyTask).filter(
         DailyTask.user_id == user_id,
         DailyTask.task_date >= week_start,
-        DailyTask.task_date <= week_end,
+        DailyTask.task_date <= review_end,
         DailyTask.is_deleted == False,
     ).all()
 
@@ -266,7 +274,7 @@ async def generate_review(
     mood_entries = db.query(MoodEntry).filter(
         MoodEntry.user_id == user_id,
         MoodEntry.entry_date >= week_start,
-        MoodEntry.entry_date <= week_end,
+        MoodEntry.entry_date <= review_end,
         MoodEntry.is_deleted == False,
     ).all()
 
@@ -279,7 +287,7 @@ async def generate_review(
     habit_entries = db.query(HabitEntry).filter(
         HabitEntry.user_id == user_id,
         HabitEntry.entry_date >= week_start,
-        HabitEntry.entry_date <= week_end,
+        HabitEntry.entry_date <= review_end,
         HabitEntry.completed == True,
         HabitEntry.is_deleted == False,
     ).all()
@@ -287,6 +295,8 @@ async def generate_review(
     week_data = {
         "total_tasks": len(tasks),
         "completed_tasks": sum(1 for t in tasks if t.is_completed),
+        "completed_task_titles": [t.title for t in tasks if t.is_completed],
+        "pending_task_titles": [t.title for t in tasks if not t.is_completed],
         "priorities": [p.title for p in priorities],
         "avg_mood": round(sum(m.mood_score for m in mood_entries) / len(mood_entries), 1) if mood_entries else None,
         "avg_energy": round(sum(m.energy_score for m in mood_entries) / len(mood_entries), 1) if mood_entries else None,
@@ -294,16 +304,31 @@ async def generate_review(
         "habit_completions": len(habit_entries),
     }
 
-    content = await generate_weekly_review(week_data)
+    language = (body.get("language") or "en") if isinstance(body, dict) else "en"
+    content = await generate_weekly_review(week_data, language)
+    model_used = settings.ollama_model if (settings.ai_provider or "").lower() == "ollama" else "gemini-2.5-flash-lite"
 
-    review = WeeklyAIReview(
-        user_id=user_id,
-        year=year,
-        week_number=week,
-        content=content,
-        model_used="claude",
-    )
-    db.add(review)
+    # One review per week: refresh the existing row in place instead of piling up duplicates.
+    review = db.query(WeeklyAIReview).filter(
+        WeeklyAIReview.user_id == user_id,
+        WeeklyAIReview.year == year,
+        WeeklyAIReview.week_number == week,
+        WeeklyAIReview.is_deleted == False,
+    ).order_by(WeeklyAIReview.created_at.desc()).first()
+
+    if review:
+        review.content = content
+        review.model_used = model_used
+        review.created_at = func.now()  # reflect the latest generation time
+    else:
+        review = WeeklyAIReview(
+            user_id=user_id,
+            year=year,
+            week_number=week,
+            content=content,
+            model_used=model_used,
+        )
+        db.add(review)
     db.commit()
     db.refresh(review)
     return review
