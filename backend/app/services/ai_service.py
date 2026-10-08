@@ -1,3 +1,4 @@
+import re
 from typing import Optional
 from app.config import settings
 
@@ -186,11 +187,20 @@ You are a normal conversational partner first. Hold a real conversation:
 - Only propose plan items when the user expresses a concrete goal or intent to plan
   (e.g. "help me get fit", "I want to read more"). When unsure, ask a brief
   follow-up question instead of guessing — still with an empty suggestions array.
-- When you do suggest, give 1-4 short, actionable items.
+- When you do suggest, give 1-4 short, actionable items by default. If the user asks for a
+  specific number of items (e.g. "10 tasks", "break my day into 20 steps"), give exactly that
+  many, up to 25. Never refuse or shorten because the number is large.
+  When the user asks you to create, split or plan a number of items, produce them right away
+  in "suggestions" instead of asking follow-up questions first.
+- Every item, no matter how many, must be its own object in the "suggestions" array. Never put
+  a list of items inside "message" and never describe the items in prose instead.
 
 "suggestions" is ALWAYS a JSON array of OBJECTS (never plain strings). Use [] when
 you have nothing concrete to add.
 
+OUTPUT FORMAT (strict): your entire reply is ONE JSON object and nothing else. No markdown,
+no ``` code fences, no text before or after the JSON. Keep "message" to one or two short
+sentences; put all items in "suggestions". Escape any double quotes inside strings.
 Respond with JSON ONLY, matching exactly this shape:
 {{"message": "<conversational reply>", "suggestions": [{{"kind": "monthly|weekly|habit|task", "title": "<short title>", "description": "<one short sentence>", "date": "YYYY-MM-DD (optional, task only)"}}]}}
 
@@ -200,20 +210,78 @@ Examples:
 - User "remind me to call the dentist tomorrow" -> {{"message": "Added for tomorrow:", "suggestions": [{{"kind": "task", "title": "Call the dentist", "description": "Scheduled for tomorrow.", "date": "<tomorrow's date>"}}]}}"""
 
 
+MAX_SUGGESTIONS = 25
+
+
+def _salvage_truncated(text: str) -> Optional[dict]:
+    """Recover complete suggestion objects from a reply cut off mid-JSON (token limit)."""
+    import json
+    m = re.search(r'"message"\s*:\s*"((?:[^"\\]|\\.)*)"', text)
+    sug_at = text.find('"suggestions"')
+    if not m or sug_at < 0:
+        return None
+    body = text[text.find("[", sug_at) + 1:]
+    items, depth, start, in_str, esc = [], 0, None, False, False
+    for i, ch in enumerate(body):
+        if in_str:
+            esc = (ch == "\\") and not esc
+            if ch == '"' and not esc:
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}" and depth:
+            depth -= 1
+            if depth == 0 and start is not None:
+                try:
+                    items.append(json.loads(body[start:i + 1]))
+                except Exception:
+                    pass
+    try:
+        message = json.loads('"' + m.group(1) + '"')
+    except Exception:
+        message = m.group(1)
+    return {"message": message, "suggestions": items}
+
+
+def _extract_json_object(raw_text: str) -> Optional[dict]:
+    """Find the reply object even when the model adds prose or a ```json fence around it."""
+    import json
+    text = (raw_text or "").strip()
+    candidates = [text]
+    fenced = re.search(r"```(?:json)?\s*(.*?)```", text, re.DOTALL | re.IGNORECASE)
+    if fenced:
+        candidates.append(fenced.group(1).strip())
+    start, end = text.find("{"), text.rfind("}")
+    if 0 <= start < end:
+        candidates.append(text[start:end + 1])
+    for c in candidates:
+        try:
+            data = json.loads(c)
+        except Exception:
+            continue
+        if isinstance(data, dict):
+            return data
+    return _salvage_truncated(text)
+
+
 def _parse_chat_json(raw_text: str) -> dict:
     """Parse the model's JSON reply into {message, suggestions[]}, defensively."""
     import json
     import re
-    try:
-        data = json.loads(raw_text)
-    except Exception:
+    data = _extract_json_object(raw_text)
+    if data is None:
         return {"message": (raw_text or "").strip() or "Please try again.", "suggestions": []}
 
     message = str(data.get("message", "")).strip() or "Here are a few ideas."
     suggestions = []
     raw_suggestions = data.get("suggestions")
     if isinstance(raw_suggestions, list):
-        for s in raw_suggestions[:4]:
+        for s in raw_suggestions[:MAX_SUGGESTIONS]:
             if not isinstance(s, dict):  # model sometimes returns bare strings — skip them
                 continue
             # Accept the alternate shape the model sometimes emits
@@ -293,11 +361,11 @@ async def _ollama_chat(system: str, history: list[dict]) -> dict:
         "messages": [{"role": "system", "content": system}, *history],
         "stream": False,
         "format": "json",
-        "options": {"temperature": 0.6},
+        "options": {"temperature": 0.6, "num_predict": 3000},
     }
     headers = {"Host": settings.ollama_host_header} if settings.ollama_host_header else {}
     try:
-        async with httpx.AsyncClient(timeout=120) as client:
+        async with httpx.AsyncClient(timeout=240) as client:
             resp = await client.post(f"{base}/api/chat", json=payload, headers=headers)
             resp.raise_for_status()
             content = resp.json().get("message", {}).get("content", "")
@@ -306,12 +374,54 @@ async def _ollama_chat(system: str, history: list[dict]) -> dict:
     return _parse_chat_json(content)
 
 
-async def chat_with_assistant(messages: list[dict], ctx: dict, language: str = "en") -> dict:
-    """Goal-planning chat. Dispatches to the configured provider (gemini | ollama)."""
+def external_ai_configured() -> bool:
+    return bool(settings.external_ai_base_url and settings.external_ai_api_key and settings.external_ai_model)
+
+
+async def _external_chat(system: str, history: list[dict]) -> dict:
+    """OpenAI-compatible chat/completions (NVIDIA NIM, EVREN, ...)."""
+    import httpx
+
+    base = settings.external_ai_base_url.rstrip("/")
+    payload = {
+        "model": settings.external_ai_model,
+        "messages": [{"role": "system", "content": system}, *history],
+        "temperature": 0.6,
+        "max_tokens": 4096,
+        "response_format": {"type": "json_object"},
+    }
+    headers = {"Authorization": f"Bearer {settings.external_ai_api_key}"}
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            resp = await client.post(f"{base}/chat/completions", json=payload, headers=headers)
+            if resp.status_code == 400 and "response_format" in payload:
+                # Not every provider/model supports JSON mode; the prompt + parser cope without it.
+                payload.pop("response_format")
+                resp = await client.post(f"{base}/chat/completions", json=payload, headers=headers)
+            resp.raise_for_status()
+            content = (resp.json()["choices"][0]["message"].get("content") or "").strip()
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code == 429:
+            return {"message": "The external AI API is rate limiting us. Try again in a minute.", "suggestions": []}
+        return {"message": f"The external AI API returned HTTP {e.response.status_code}.", "suggestions": []}
+    except Exception:
+        return {"message": "Sorry, I couldn't reach the external AI API. Please try again.", "suggestions": []}
+    return _parse_chat_json(content)
+
+
+async def chat_with_assistant(messages: list[dict], ctx: dict, language: str = "en", use_external: bool = False) -> dict:
+    """Goal-planning chat. Dispatches to the configured provider (gemini | ollama).
+
+    use_external routes to the external OpenAI-compatible API; the caller must only
+    set it for admin users.
+    """
     system = _build_chat_system_instruction(ctx, language)
     history = _normalize_history(messages)
     if not history:
         return {"message": "Tell me what you'd like to work on.", "suggestions": []}
+
+    if use_external and external_ai_configured():
+        return await _external_chat(system, history)
 
     provider = (settings.ai_provider or "gemini").lower()
     if provider == "ollama" and settings.ollama_base_url:
