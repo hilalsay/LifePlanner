@@ -10,6 +10,7 @@ from app.models.planning import DailyTask, WeeklyPriority, MonthlyFocus, Plannin
 from app.models.habits import Habit, HabitEntry
 from app.models.tracking import MoodEntry, WeeklyAIReview
 from app.models.chat import Conversation, ChatMessage
+from app.models.user import User
 from app.schemas.tracking import WeeklyAIReviewOut
 from app.schemas.chat import (
     ConversationOut,
@@ -213,7 +214,11 @@ async def chat(
     ))
 
     # Call the model with the plan context.
-    result = await chat_with_assistant(history, _plan_context(db, user_id), req.language)
+    user = db.get(User, user_id)
+    result = await chat_with_assistant(
+        history, _plan_context(db, user_id), req.language,
+        use_external=bool(user and user.is_admin),
+    )
 
     # Persist the assistant's reply (with its suggestions).
     db.add(ChatMessage(
