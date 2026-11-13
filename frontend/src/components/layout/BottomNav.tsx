@@ -1,35 +1,35 @@
 import { NavLink } from "react-router-dom";
-import { CalendarDays, CalendarRange, Calendar, Flame, CalendarCheck2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/contexts/LanguageContext";
-
-const nav = [
-  { to: "/today", icon: CalendarDays, key: "nav.today" },
-  { to: "/week", icon: CalendarRange, key: "nav.week" },
-  { to: "/month", icon: Calendar, key: "nav.month" },
-  { to: "/habits", icon: Flame, key: "nav.habits" },
-  { to: "/overview", icon: CalendarCheck2, key: "nav.overview" },
-];
+import { BOTTOM_NAV } from "./nav";
 
 export function BottomNav() {
   const { t } = useI18n();
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 h-16 border-t bg-card">
-      <ul className="flex h-full items-stretch justify-around px-1">
-        {nav.map(({ to, icon: Icon, key }) => (
+    <nav aria-label="Primary" className="pb-safe fixed inset-x-0 bottom-0 z-50 border-t bg-card/95 backdrop-blur md:hidden">
+      <ul className="flex h-16 items-stretch justify-around px-1">
+        {BOTTOM_NAV.map(({ to, icon: Icon, key }) => (
           <li key={to} className="flex-1">
             <NavLink
               to={to}
-              end={to === "/today"}
               className={({ isActive }) =>
                 cn(
-                  "flex h-full min-h-[44px] flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors",
-                  isActive ? "text-primary" : "text-muted-foreground active:bg-accent"
+                  "group flex h-full min-h-[44px] flex-col items-center justify-center gap-1 text-[11px] font-semibold transition-colors",
+                  isActive ? "text-primary" : "text-muted-foreground"
                 )
               }
             >
-              <Icon className="h-5 w-5" />
-              <span className="max-w-full truncate px-0.5">{t(key)}</span>
+              {({ isActive }) => (
+                <>
+                  <span className={cn(
+                    "flex h-7 w-12 items-center justify-center rounded-full transition-colors duration-150",
+                    isActive ? "bg-primary-soft" : "group-active:bg-accent"
+                  )}>
+                    <Icon className="h-5 w-5" aria-hidden />
+                  </span>
+                  <span className="max-w-full truncate px-0.5">{t(key)}</span>
+                </>
+              )}
             </NavLink>
           </li>
         ))}

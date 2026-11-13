@@ -65,11 +65,11 @@ export function YearView() {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <div className="flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={() => setYear((y) => y - 1)}>
+        <Button aria-label={t("common.prev")} variant="ghost" size="icon" onClick={() => setYear((y) => y - 1)}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <h2 className="text-xl font-bold">{year}</h2>
-        <Button variant="ghost" size="icon" onClick={() => setYear((y) => y + 1)}>
+        <Button aria-label={t("common.next")} variant="ghost" size="icon" onClick={() => setYear((y) => y + 1)}>
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
@@ -114,10 +114,10 @@ export function YearView() {
                       }}
                       className="flex-1 rounded border bg-background px-2 py-0.5 text-sm outline-none focus:ring-2 focus:ring-ring"
                     />
-                    <button onClick={() => saveEdit(goal.id)} className="text-primary hover:opacity-70">
+                    <button aria-label={t("common.save")} onClick={() => saveEdit(goal.id)} className="text-primary hover:opacity-70">
                       <Check className="h-4 w-4" />
                     </button>
-                    <button onClick={cancelEdit} className="text-muted-foreground hover:opacity-70">
+                    <button aria-label={t("common.close")} onClick={cancelEdit} className="text-muted-foreground hover:opacity-70">
                       <X className="h-4 w-4" />
                     </button>
                   </div>
@@ -138,16 +138,16 @@ export function YearView() {
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 {editingId !== goal.id && (
-                  <button
+                  <button aria-label={t("common.edit")}
                     onClick={() => startEdit(goal)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                    className="row-action text-muted-foreground hover:text-foreground"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
                 )}
-                <button
+                <button aria-label={t("common.delete")}
                   onClick={() => deleteGoal(goal.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                  className="row-action text-muted-foreground hover:text-danger"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -170,7 +170,7 @@ export function YearView() {
               placeholder={t("year.addPlaceholder")}
               className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
-            <Button size="sm" onClick={addGoal}>
+            <Button aria-label={t("common.add")} size="sm" onClick={addGoal}>
               <Plus className="h-4 w-4" />
             </Button>
           </div>

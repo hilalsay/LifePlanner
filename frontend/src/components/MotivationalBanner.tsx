@@ -56,10 +56,10 @@ export function MotivationalBanner() {
   }, []);
 
   return (
-    <div className="relative overflow-hidden rounded-xl border bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-4 py-3">
+    <figure className="rounded-xl bg-sunken px-4 py-3">
       <div className="flex items-start gap-3">
-        <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-        <p className="flex-1 text-sm italic text-muted-foreground">
+        <Sparkles className="mt-1 h-4 w-4 shrink-0 text-primary" aria-hidden />
+        <p aria-live="polite" className="flex-1 font-display text-[15px] italic leading-relaxed text-muted-foreground">
           {loading ? t("banner.loading") : message}
         </p>
         <div className="flex items-center gap-1">
@@ -69,15 +69,16 @@ export function MotivationalBanner() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6"
+            className="-my-1.5 h-9 w-9 text-muted-foreground"
             onClick={() => fetchMessage(true)}
             disabled={loading}
+            aria-label={t("banner.refresh")}
             title={t("banner.refresh")}
           >
-            <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} aria-hidden />
           </Button>
         </div>
       </div>
-    </div>
+    </figure>
   );
 }

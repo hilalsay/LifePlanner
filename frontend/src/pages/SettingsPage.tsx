@@ -105,7 +105,7 @@ export function SettingsPage() {
                   {uploading ? t("settings.uploading") : user?.avatar_url ? t("settings.changePhoto") : t("settings.uploadPhoto")}
                 </Button>
                 {user?.avatar_url && !uploading && (
-                  <Button variant="ghost" size="sm" onClick={removeAvatar} className="text-muted-foreground hover:text-destructive">
+                  <Button variant="ghost" size="sm" onClick={removeAvatar} className="text-muted-foreground hover:text-danger">
                     <Trash2 className="mr-1.5 h-3.5 w-3.5" /> {t("settings.removePhoto")}
                   </Button>
                 )}
@@ -151,7 +151,7 @@ export function SettingsPage() {
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
               {t("settings.saveProfile")}
             </Button>
-            {saved && <span className="text-xs text-emerald-600 dark:text-emerald-400">{t("settings.profileSaved")}</span>}
+            {saved && <span className="text-xs text-success">{t("settings.profileSaved")}</span>}
           </div>
         </CardContent>
       </Card>

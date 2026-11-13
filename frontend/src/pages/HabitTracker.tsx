@@ -100,7 +100,7 @@ export function HabitTracker() {
           <div className="flex items-center justify-between gap-2">
             <CardTitle className="text-base">{t("habits.trackerTitle")}</CardTitle>
             <div className="flex items-center gap-1">
-              <Button variant="outline" size="icon" className="h-7 w-7" onClick={goPrev} title={t("habits.prevWeek")}>
+              <Button variant="outline" size="icon" className="h-7 w-7" onClick={goPrev} title={t("habits.prevWeek")} aria-label={t("habits.prevWeek")}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <span className="min-w-[7.5rem] text-center text-xs font-medium text-muted-foreground">
@@ -112,7 +112,7 @@ export function HabitTracker() {
                 className="h-7 w-7"
                 onClick={goNext}
                 disabled={atToday}
-                title={t("habits.nextWeek")}
+                title={t("habits.nextWeek")} aria-label={t("habits.nextWeek")}
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -133,7 +133,7 @@ export function HabitTracker() {
                     </th>
                   ))}
                   <th className="pb-2 text-center text-xs font-medium text-muted-foreground">
-                    <Flame className="mx-auto h-4 w-4 text-orange-500" />
+                    <Flame className="mx-auto h-4 w-4 text-warning" />
                   </th>
                   <th className="w-8 pb-2" />
                 </tr>
@@ -180,13 +180,13 @@ export function HabitTracker() {
                       );
                     })}
                     <td className="py-2 text-center">
-                      <span className="text-sm font-semibold text-orange-500">
+                      <span className="text-sm font-semibold text-warning">
                         {streaks[habit.id] ?? 0}
                       </span>
                     </td>
                     <td className="py-2 text-center">
                       <div className="relative inline-block">
-                        <button
+                        <button aria-label={t("common.more")}
                           onClick={() => setMenuFor((m) => (m === habit.id ? null : habit.id))}
                           className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
                           title={t("habits.options")}
@@ -211,7 +211,7 @@ export function HabitTracker() {
                                   setDeleting(habit);
                                   setMenuFor(null);
                                 }}
-                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-destructive hover:bg-accent"
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-danger hover:bg-accent"
                               >
                                 <Trash2 className="h-3.5 w-3.5" /> {t("habits.delete")}
                               </button>
@@ -235,7 +235,7 @@ export function HabitTracker() {
               placeholder={t("habits.addPlaceholder")}
               className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
-            <Button size="sm" onClick={addHabit}>
+            <Button aria-label={t("common.add")} size="sm" onClick={addHabit}>
               <Plus className="h-4 w-4" />
             </Button>
           </div>
@@ -310,7 +310,7 @@ function HabitEditModal({
       >
         <div className="mb-4 flex items-center justify-between">
           <h3 className="font-semibold">{t("habits.editTitle")}</h3>
-          <button onClick={onClose} className="rounded-md p-1 text-muted-foreground hover:bg-muted">
+          <button aria-label={t("common.close")} onClick={onClose} className="rounded-md p-1 text-muted-foreground hover:bg-muted">
             <X className="h-4 w-4" />
           </button>
         </div>

@@ -11,7 +11,7 @@ export function LanguageToggle({ className }: { className?: string }) {
       variant="ghost"
       size="sm"
       onClick={toggle}
-      title={t("topbar.language")}
+      title={t("topbar.language")} aria-label={t("topbar.language")}
       className={cn("gap-1.5 px-2", className)}
     >
       <Languages className="h-4 w-4" />

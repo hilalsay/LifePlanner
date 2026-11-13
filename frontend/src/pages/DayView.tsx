@@ -1,15 +1,17 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
-  Plus, Check, Trash2, ChevronLeft, ChevronRight,
-  GripVertical, Pencil, X, Clock,
+  Plus, Check, Trash2, ChevronLeft, ChevronRight, ChevronDown,
+  GripVertical, Pencil, X, Clock, Sun, PartyPopper,
 } from "lucide-react";
-import { format, addDays, subDays, differenceInMinutes, differenceInCalendarDays, parseISO, type Locale } from "date-fns";
+import { format, addDays, subDays, isToday, differenceInMinutes, differenceInCalendarDays, parseISO, type Locale } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { SkeletonRows } from "@/components/ui/skeleton";
+import { EmptyState, ErrorState } from "@/components/ui/state";
+import { inputClass } from "@/components/ui/input";
 import { MotivationalBanner } from "@/components/MotivationalBanner";
 import { planningApi, type DailyTask } from "@/lib/api";
-import { toDateString } from "@/lib/utils";
+import { cn, toDateString } from "@/lib/utils";
 import { setChatDragItem } from "@/lib/dragItem";
 import { useI18n } from "@/contexts/LanguageContext";
 import { dateLocale } from "@/lib/dateLocale";
@@ -87,12 +89,6 @@ function isOverdue(task: DailyTask, now = new Date()): boolean {
   return false;
 }
 
-const STATUS_CLASSES: Record<DeadlineStatus, string> = {
-  overdue:  "text-red-600 dark:text-red-400",
-  urgent:   "text-orange-500 dark:text-orange-400",
-  upcoming: "text-blue-500 dark:text-blue-400",
-};
-
 // ── Quick-time options ────────────────────────────────────────────────────────
 
 function quickTimeOpts(t: TFn, locale: Locale) {
@@ -130,7 +126,17 @@ function persistOrder(tasks: DailyTask[], dateStr: string) {
   localStorage.setItem(orderKey(dateStr), JSON.stringify(tasks.map((t) => t.id)));
 }
 
-const PRIORITY_COLORS = { high: "destructive", medium: "default", low: "secondary" } as const;
+const STATUS_CLASSES: Record<DeadlineStatus, string> = {
+  overdue:  "text-danger",
+  urgent:   "text-warning",
+  upcoming: "text-info",
+};
+
+const PRIORITY_STYLE: Record<DailyTask["priority"], string> = {
+  high:   "bg-danger-soft text-danger",
+  medium: "bg-warning-soft text-warning",
+  low:    "bg-secondary text-muted-foreground",
+};
 const PRIORITY_CYCLE: Record<string, "low" | "medium" | "high"> = { low: "medium", medium: "high", high: "low" };
 
 // ── Inline deadline picker ────────────────────────────────────────────────────
@@ -141,26 +147,27 @@ interface DeadlinePickerProps {
   onDate: (d: string) => void;
   onTime: (t: string) => void;
   onClear: () => void;
-  compact?: boolean;
 }
 
-function DeadlinePicker({ date, time, onDate, onTime, onClear, compact }: DeadlinePickerProps) {
+function DeadlinePicker({ date, time, onDate, onTime, onClear }: DeadlinePickerProps) {
   const { t, lang } = useI18n();
   const opts = quickTimeOpts(t, dateLocale(lang));
   return (
-    <div className={`flex flex-wrap items-center gap-1.5 ${compact ? "" : "pt-0.5"}`}>
+    <div className="flex flex-wrap items-center gap-1.5">
       {opts.map((o) => {
         const active = date === o.date && time === o.time;
         return (
           <button
             key={o.label}
             type="button"
+            aria-pressed={active}
             onClick={() => { onDate(o.date); onTime(o.time); }}
-            className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+            className={cn(
+              "h-8 rounded-full px-3 text-xs font-semibold transition-colors duration-150",
               active
-                ? "bg-orange-500 text-white"
-                : "bg-muted text-muted-foreground hover:bg-orange-100 hover:text-orange-600 dark:hover:bg-orange-900/30 dark:hover:text-orange-400"
-            }`}
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary text-secondary-foreground hover:bg-primary-soft hover:text-primary"
+            )}
           >
             {o.label}
           </button>
@@ -168,13 +175,19 @@ function DeadlinePicker({ date, time, onDate, onTime, onClear, compact }: Deadli
       })}
       <input
         type="time"
+        aria-label={t("day.deadlineTime")}
         value={time}
         onChange={(e) => { onTime(e.target.value); if (!date) onDate(toDateString(new Date())); }}
-        className="rounded border bg-background px-1.5 py-0.5 text-xs outline-none focus:ring-1 focus:ring-ring"
+        className="h-8 rounded-full border border-input bg-card px-3 text-xs"
       />
       {(date || time) && (
-        <button onClick={onClear} className="text-muted-foreground hover:text-foreground">
-          <X className="h-3 w-3" />
+        <button
+          type="button"
+          onClick={onClear}
+          aria-label={t("common.cancel")}
+          className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <X className="h-3.5 w-3.5" aria-hidden />
         </button>
       )}
     </div>
@@ -183,13 +196,7 @@ function DeadlinePicker({ date, time, onDate, onTime, onClear, compact }: Deadli
 
 // ── DeadlineBadge ─────────────────────────────────────────────────────────────
 
-function DeadlineBadge({
-  task,
-  onClick,
-}: {
-  task: DailyTask;
-  onClick?: () => void;
-}) {
+function DeadlineBadge({ task, onClick }: { task: DailyTask; onClick?: () => void }) {
   const { t, lang } = useI18n();
   if (task.is_completed || !task.deadline_date) return null;
   const info = deadlineInfo(task.deadline_date, task.deadline_time, t, dateLocale(lang));
@@ -198,12 +205,34 @@ function DeadlineBadge({
     <button
       type="button"
       onClick={onClick}
-      className={`shrink-0 flex items-center gap-1 text-xs font-medium transition-opacity hover:opacity-70 ${STATUS_CLASSES[info.status]}`}
-      title={t("day.editDeadline")}
+      className={cn("inline-flex items-center gap-1 rounded-md text-xs font-semibold hover:underline", STATUS_CLASSES[info.status])}
+      title={t("day.editDeadline")} aria-label={t("day.editDeadline")}
     >
-      <Clock className="h-3 w-3" />
+      <Clock className="h-3 w-3" aria-hidden />
       {info.text}
     </button>
+  );
+}
+
+// ── Undo toast ────────────────────────────────────────────────────────────────
+
+function UndoToast({ message, actionLabel, onAction, onDismiss }: {
+  message: string; actionLabel: string; onAction: () => void; onDismiss: () => void;
+}) {
+  useEffect(() => {
+    const id = window.setTimeout(onDismiss, 6000);
+    return () => window.clearTimeout(id);
+  }, [onDismiss]);
+  return (
+    <div
+      role="status"
+      className="fixed inset-x-4 bottom-20 z-[70] mx-auto flex max-w-sm animate-fade-in items-center gap-3 rounded-xl bg-foreground px-4 py-3 text-sm text-background shadow-lg md:bottom-6"
+    >
+      <span className="flex-1">{message}</span>
+      <button onClick={onAction} className="rounded-md px-2 py-1 font-semibold text-primary-soft underline-offset-4 hover:underline">
+        {actionLabel}
+      </button>
+    </div>
   );
 }
 
@@ -215,12 +244,19 @@ export function DayView() {
   const [date, setDate]   = useState(new Date());
   const [tasks, setTasks] = useState<DailyTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const [reload, setReload] = useState(0);
+  const [showCompleted, setShowCompleted] = useState(true);
+  const [lastDeleted, setLastDeleted] = useState<DailyTask | null>(null);
 
   // new task form
   const [newTitle, setNewTitle]           = useState("");
+  const [adding, setAdding]               = useState(false);
   const [showDlPicker, setShowDlPicker]   = useState(false);
   const [newDlDate, setNewDlDate]         = useState("");
   const [newDlTime, setNewDlTime]         = useState("");
+  const addInputRef = useRef<HTMLInputElement>(null);
 
   // inline title edit
   const [editingId, setEditingId]         = useState<string | null>(null);
@@ -237,71 +273,125 @@ export function DayView() {
   const [dragOverId, setDragOverId]       = useState<string | null>(null);
 
   const dateStr = toDateString(date);
+  const viewingToday = isToday(date);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
+    setLoadError(false);
     planningApi
       .getDailyTasks(dateStr)
-      .then((fetched) => setTasks(applyStoredOrder(fetched, dateStr)))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [dateStr]);
+      .then((fetched) => { if (!cancelled) setTasks(applyStoredOrder(fetched, dateStr)); })
+      .catch(() => { if (!cancelled) setLoadError(true); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [dateStr, reload]);
 
-  // Sort: overdue tasks float to top; rest keep stored drag order
-  const displayedTasks = useMemo(() => {
+  // Keyboard: "n" focuses quick-add, ←/→ change day, "t" jumps to today
+  // (ignored while typing in a field).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement;
+      if (e.metaKey || e.ctrlKey || e.altKey || el.closest("input, textarea, select, [contenteditable]")) return;
+      if (e.key === "n") { e.preventDefault(); addInputRef.current?.focus(); }
+      else if (e.key === "ArrowLeft") setDate((d) => subDays(d, 1));
+      else if (e.key === "ArrowRight") setDate((d) => addDays(d, 1));
+      else if (e.key === "t") setDate(new Date());
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Overdue first (by deadline), then open tasks in stored order; completed separately.
+  const { openTasks, doneTasks } = useMemo(() => {
     const now = new Date();
     const overdue = tasks.filter((t) => isOverdue(t, now));
-    const rest    = tasks.filter((t) => !isOverdue(t, now));
-    overdue.sort((a, b) => {
-      const ka = (a.deadline_date ?? "") + (a.deadline_time ?? "");
-      const kb = (b.deadline_date ?? "") + (b.deadline_time ?? "");
-      return ka.localeCompare(kb);
-    });
-    return [...overdue, ...rest];
+    const rest    = tasks.filter((t) => !isOverdue(t, now) && !t.is_completed);
+    overdue.sort((a, b) =>
+      ((a.deadline_date ?? "") + (a.deadline_time ?? "")).localeCompare((b.deadline_date ?? "") + (b.deadline_time ?? "")));
+    return { openTasks: [...overdue, ...rest], doneTasks: tasks.filter((t) => t.is_completed) };
   }, [tasks]);
+
+  /** Run a mutation; surface a dismissible error instead of failing silently. */
+  const guard = async (fn: () => Promise<void>) => {
+    try { setSaveError(false); await fn(); }
+    catch { setSaveError(true); }
+  };
 
   // ── Task mutations ─────────────────────────────────────────────────────────
 
-  const addTask = async () => {
-    if (!newTitle.trim()) return;
-    const task = await planningApi.createDailyTask({
-      title: newTitle.trim(),
-      task_date: dateStr,
-      priority: "medium",
-      deadline_date: newDlDate || undefined,
-      deadline_time: newDlTime ? newDlTime + ":00" : undefined,
+  const addTask = () => guard(async () => {
+    if (!newTitle.trim() || adding) return;
+    setAdding(true);
+    try {
+      const task = await planningApi.createDailyTask({
+        title: newTitle.trim(),
+        task_date: dateStr,
+        priority: "medium",
+        deadline_date: newDlDate || undefined,
+        deadline_time: newDlTime ? newDlTime + ":00" : undefined,
+      });
+      setTasks((prev) => { const next = [...prev, task]; persistOrder(next, dateStr); return next; });
+      setNewTitle("");
+      setNewDlDate("");
+      setNewDlTime("");
+      setShowDlPicker(false);
+      addInputRef.current?.focus();
+    } finally {
+      setAdding(false);
+    }
+  });
+
+  // Optimistic: flip immediately, roll back if the server refuses.
+  const toggleTask = (task: DailyTask) => guard(async () => {
+    setTasks((ts) => ts.map((x) => (x.id === task.id ? { ...x, is_completed: !x.is_completed } : x)));
+    try {
+      const updated = await planningApi.updateDailyTask(task.id, { is_completed: !task.is_completed });
+      setTasks((ts) => ts.map((x) => (x.id === task.id ? updated : x)));
+    } catch (e) {
+      setTasks((ts) => ts.map((x) => (x.id === task.id ? task : x)));
+      throw e;
+    }
+  });
+
+  const deleteTask = (task: DailyTask) => guard(async () => {
+    await planningApi.deleteDailyTask(task.id);
+    setTasks((prev) => { const next = prev.filter((x) => x.id !== task.id); persistOrder(next, dateStr); return next; });
+    setLastDeleted(task);
+  });
+
+  const undoDelete = () => guard(async () => {
+    const task = lastDeleted;
+    setLastDeleted(null);
+    if (!task) return;
+    const restored = await planningApi.createDailyTask({
+      title: task.title,
+      task_date: task.task_date,
+      priority: task.priority,
+      description: task.description,
+      weekly_priority_id: task.weekly_priority_id,
+      deadline_date: task.deadline_date,
+      deadline_time: task.deadline_time,
+      is_completed: task.is_completed,
     });
-    setTasks((prev) => { const next = [...prev, task]; persistOrder(next, dateStr); return next; });
-    setNewTitle("");
-    setNewDlDate("");
-    setNewDlTime("");
-    setShowDlPicker(false);
-  };
-
-  const toggleTask = async (task: DailyTask) => {
-    const updated = await planningApi.updateDailyTask(task.id, { is_completed: !task.is_completed });
-    setTasks((ts) => ts.map((t) => (t.id === task.id ? updated : t)));
-  };
-
-  const deleteTask = async (id: string) => {
-    await planningApi.deleteDailyTask(id);
-    setTasks((prev) => { const next = prev.filter((t) => t.id !== id); persistOrder(next, dateStr); return next; });
-  };
+    if (restored.task_date === dateStr) setTasks((prev) => [...prev, restored]);
+  });
+  const dismissUndo = useCallback(() => setLastDeleted(null), []);
 
   useEffect(() => { if (editingId) editInputRef.current?.focus(); }, [editingId]);
 
-  const saveEdit = async (id: string) => {
+  const saveEdit = (id: string) => guard(async () => {
     if (!editingValue.trim()) { setEditingId(null); return; }
     const updated = await planningApi.updateDailyTask(id, { title: editingValue.trim() });
-    setTasks((ts) => ts.map((t) => (t.id === id ? updated : t)));
+    setTasks((ts) => ts.map((x) => (x.id === id ? updated : x)));
     setEditingId(null);
-  };
+  });
 
-  const cyclePriority = async (task: DailyTask) => {
+  const cyclePriority = (task: DailyTask) => guard(async () => {
     const next    = PRIORITY_CYCLE[task.priority] ?? "medium";
     const updated = await planningApi.updateDailyTask(task.id, { priority: next });
-    setTasks((ts) => ts.map((t) => (t.id === task.id ? updated : t)));
-  };
+    setTasks((ts) => ts.map((x) => (x.id === task.id ? updated : x)));
+  });
 
   const openDeadlinePicker = (task: DailyTask) => {
     setDlPickerId(task.id);
@@ -309,14 +399,14 @@ export function DayView() {
     setDlPickerTime(task.deadline_time ? hhmm(task.deadline_time) : "");
   };
 
-  const saveDeadline = async (id: string) => {
+  const saveDeadline = (id: string) => guard(async () => {
     const updated = await planningApi.updateDailyTask(id, {
       deadline_date: dlPickerDate || null,
       deadline_time: dlPickerTime ? dlPickerTime + ":00" : null,
     } as Parameters<typeof planningApi.updateDailyTask>[1]);
-    setTasks((ts) => ts.map((t) => (t.id === id ? updated : t)));
+    setTasks((ts) => ts.map((x) => (x.id === id ? updated : x)));
     setDlPickerId(null);
-  };
+  });
 
   // ── Drag handlers ──────────────────────────────────────────────────────────
 
@@ -332,8 +422,8 @@ export function DayView() {
     if (!dragId || dragId === targetId) return;
     setTasks((prev) => {
       const next = [...prev];
-      const from = next.findIndex((t) => t.id === dragId);
-      const to   = next.findIndex((t) => t.id === targetId);
+      const from = next.findIndex((x) => x.id === dragId);
+      const to   = next.findIndex((x) => x.id === targetId);
       next.splice(to, 0, next.splice(from, 1)[0]);
       persistOrder(next, dateStr);
       return next;
@@ -343,247 +433,352 @@ export function DayView() {
   };
   const handleDragEnd = () => { setDragId(null); setDragOverId(null); };
 
-  const completed = tasks.filter((task) => task.is_completed).length;
-  const now       = new Date();
+  const completed = doneTasks.length;
+  const pct = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
+  const now = new Date();
+
+  // ── Row renderer ───────────────────────────────────────────────────────────
+
+  const renderTask = (task: DailyTask) => {
+    const overdue    = isOverdue(task, now);
+    const isEditing  = editingId === task.id;
+    const isPicking  = dlPickerId === task.id;
+    const canReorder = !overdue && !task.is_completed;
+
+    return (
+      <li
+        key={task.id}
+        draggable={!isEditing}
+        onDragStart={(e) => {
+          // Reorder first (sets effectAllowed="move"), then the chat
+          // payload, which sets "copyMove" so the panel can accept it.
+          if (canReorder) handleDragStart(e, task.id);
+          setChatDragItem(e, {
+            kind: "task",
+            title: task.title,
+            priority: task.priority,
+            deadline: task.deadline_date,
+            completed: task.is_completed,
+          });
+        }}
+        onDragOver={(e) => handleDragOver(e, task.id)}
+        onDrop={() => handleDrop(task.id)}
+        onDragEnd={handleDragEnd}
+        className={cn(
+          "group relative rounded-lg px-1.5 py-1 transition-colors duration-150",
+          overdue ? "bg-danger-soft/70" : "hover:bg-accent/60",
+          dragId === task.id && "opacity-40",
+          dragOverId === task.id && "ring-2 ring-dashed ring-primary/50",
+        )}
+      >
+        <div className="flex min-h-[44px] items-center gap-2">
+          <span
+            title={t("day.dragToReorder")}
+            className={cn(
+              "row-action hidden shrink-0 cursor-grab text-muted-foreground/60 active:cursor-grabbing sm:block",
+              !canReorder && "invisible",
+            )}
+            aria-hidden
+          >
+            <GripVertical className="h-4 w-4" />
+          </span>
+
+          {/* Completion toggle — 44px hit area around a 22px circle */}
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={task.is_completed}
+            aria-label={t(task.is_completed ? "day.markUndone" : "day.markDone", { title: task.title })}
+            onClick={() => toggleTask(task)}
+            className="-m-2.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+          >
+            <span className={cn(
+              "flex h-[22px] w-[22px] items-center justify-center rounded-full border-2 transition-[background-color,border-color,transform] duration-150 active:scale-90",
+              task.is_completed
+                ? "border-primary bg-primary text-primary-foreground"
+                : overdue
+                ? "border-danger hover:bg-danger/10"
+                : "border-muted-foreground/50 hover:border-primary hover:bg-primary-soft",
+            )}>
+              {task.is_completed && <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />}
+            </span>
+          </button>
+
+          {isEditing ? (
+            <div className="flex flex-1 items-center gap-1">
+              <input
+                ref={editInputRef}
+                type="text"
+                aria-label={t("day.editTask")}
+                value={editingValue}
+                onChange={(e) => setEditingValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") saveEdit(task.id);
+                  if (e.key === "Escape") setEditingId(null);
+                }}
+                className={cn(inputClass, "h-9")}
+              />
+              <Button size="icon-sm" variant="subtle" onClick={() => { setEditingId(null); openDeadlinePicker(task); }} aria-label={t("day.setDeadline")} title={t("day.setDeadline")}>
+                <Clock className="h-4 w-4" aria-hidden />
+              </Button>
+              <Button size="icon-sm" onClick={() => saveEdit(task.id)} aria-label={t("common.save")}>
+                <Check className="h-4 w-4" aria-hidden />
+              </Button>
+              <Button size="icon-sm" variant="subtle" onClick={() => setEditingId(null)} aria-label={t("common.cancel")}>
+                <X className="h-4 w-4" aria-hidden />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div className="min-w-0 flex-1 py-1">
+                <p
+                  onClick={() => { if (!task.is_completed) { setEditingId(task.id); setEditingValue(task.title); } }}
+                  title={task.is_completed ? undefined : t("day.editTask")}
+                  className={cn(
+                    "break-words text-[15px] leading-snug",
+                    !task.is_completed && "cursor-text",
+                    task.is_completed && "text-muted-foreground line-through decoration-muted-foreground/50",
+                  )}
+                >
+                  {task.title}
+                </p>
+                {!isPicking && task.deadline_date && !task.is_completed && (
+                  <DeadlineBadge task={task} onClick={() => openDeadlinePicker(task)} />
+                )}
+              </div>
+
+              {!task.is_completed && (
+                <button
+                  type="button"
+                  onClick={() => cyclePriority(task)}
+                  title={t("day.changePriority")}
+                  aria-label={t("day.priority", { p: t(`day.priority.${task.priority}`) })}
+                  className={cn(
+                    "h-7 shrink-0 rounded-full px-2.5 text-xs font-semibold transition-opacity hover:opacity-80",
+                    PRIORITY_STYLE[task.priority],
+                  )}
+                >
+                  {t(`day.priority.${task.priority}`)}
+                </button>
+              )}
+
+              <div className="row-action flex shrink-0 items-center [&>.pointer-only]:hidden [@media(hover:hover)]:[&>.pointer-only]:inline-flex">
+                {!task.deadline_date && !task.is_completed && !isPicking && (
+                  <Button size="icon-sm" variant="subtle" className="pointer-only" onClick={() => openDeadlinePicker(task)} aria-label={t("day.addDeadline")} title={t("day.addDeadline")}>
+                    <Clock className="h-4 w-4" aria-hidden />
+                  </Button>
+                )}
+                <Button
+                  size="icon-sm"
+                  variant="subtle"
+                  className="pointer-only"
+                  onClick={() => { setEditingId(task.id); setEditingValue(task.title); }}
+                  aria-label={t("day.editTask")}
+                  title={t("day.editTask")}
+                >
+                  <Pencil className="h-4 w-4" aria-hidden />
+                </Button>
+                <Button
+                  size="icon-sm"
+                  variant="subtle"
+                  className="hover:bg-danger-soft hover:text-danger"
+                  onClick={() => deleteTask(task)}
+                  aria-label={t("day.deleteTask")}
+                  title={t("day.deleteTask")}
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {isPicking && (
+          <div className="mb-1 ml-9 mt-1 space-y-2 rounded-lg bg-sunken p-3">
+            <DeadlinePicker
+              date={dlPickerDate}
+              time={dlPickerTime}
+              onDate={setDlPickerDate}
+              onTime={setDlPickerTime}
+              onClear={() => { setDlPickerDate(""); setDlPickerTime(""); }}
+            />
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => saveDeadline(task.id)}>{t("common.save")}</Button>
+              <Button size="sm" variant="ghost" onClick={() => setDlPickerId(null)}>{t("common.cancel")}</Button>
+            </div>
+          </div>
+        )}
+      </li>
+    );
+  };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
-      <MotivationalBanner />
-
-      {/* Day navigation */}
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" size="icon" onClick={() => setDate((d) => subDays(d, 1))}>
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <div className="text-center">
-          <p className="text-sm font-medium">{format(date, "EEEE", { locale })}</p>
-          <p className="text-xs text-muted-foreground">{format(date, "MMMM d, yyyy", { locale })}</p>
+    <div className="mx-auto max-w-2xl space-y-5">
+      {/* Date header: the day is the anchor of this screen */}
+      <header className="flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 text-sm font-semibold text-primary">
+            {format(date, "EEEE", { locale })}
+            {viewingToday && (
+              <span className="rounded-full bg-primary-soft px-2 py-0.5 text-xs">{t("day.isToday")}</span>
+            )}
+          </p>
+          <p className="whitespace-nowrap font-display text-[28px] font-semibold leading-tight md:text-4xl">
+            {format(date, "d MMMM", { locale })}
+            <span className="text-muted-foreground/70"> {format(date, "yyyy")}</span>
+          </p>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => setDate((d) => addDays(d, 1))}>
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
+        <div className="flex shrink-0 items-center gap-1">
+          {!viewingToday && (
+            <Button variant="outline" size="sm" onClick={() => setDate(new Date())} title={`${t("day.goToToday")} (T)`}>
+              <Sun className="h-4 w-4" aria-hidden />
+              <span className="hidden sm:inline">{t("common.today")}</span>
+            </Button>
+          )}
+          <Button variant="outline" size="icon" onClick={() => setDate((d) => subDays(d, 1))} aria-label={t("day.prevDay")} title={`${t("day.prevDay")} (←)`}>
+            <ChevronLeft className="h-4 w-4" aria-hidden />
+          </Button>
+          <Button variant="outline" size="icon" onClick={() => setDate((d) => addDays(d, 1))} aria-label={t("day.nextDay")} title={`${t("day.nextDay")} (→)`}>
+            <ChevronRight className="h-4 w-4" aria-hidden />
+          </Button>
+        </div>
+      </header>
+
+      {/* Progress */}
+      {tasks.length > 0 && (
+        <div className="space-y-1.5">
+          <div className="flex justify-between text-sm">
+            <span className="font-medium">{t("common.doneCount", { done: completed, total: tasks.length })}</span>
+            <span className="tabular-nums text-muted-foreground">{pct}%</span>
+          </div>
+          <div
+            role="progressbar"
+            aria-valuenow={pct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={t("day.tasks")}
+            className="h-2 overflow-hidden rounded-full bg-secondary"
+          >
+            <div className="h-full origin-left rounded-full bg-primary transition-transform duration-300 ease-out" style={{ transform: `scaleX(${pct / 100})` }} />
+          </div>
+        </div>
+      )}
+
+      {/* Quick add: the primary action, always at the top */}
+      <Card className="p-2 shadow-sm">
+        <form
+          onSubmit={(e) => { e.preventDefault(); addTask(); }}
+          className="flex items-center gap-2"
+        >
+          <label htmlFor="new-task" className="sr-only">{t("day.newTaskLabel")}</label>
+          <Plus className="ml-2 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+          <input
+            id="new-task"
+            ref={addInputRef}
+            type="text"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder={t("day.addPlaceholder")}
+            autoComplete="off"
+            enterKeyHint="done"
+            className="h-11 min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted-foreground/80"
+          />
+          <Button
+            type="button"
+            size="icon"
+            variant={showDlPicker || newDlDate || newDlTime ? "secondary" : "subtle"}
+            onClick={() => setShowDlPicker((v) => !v)}
+            aria-label={t("day.setDeadline")}
+            aria-expanded={showDlPicker}
+            title={t("day.setDeadline")}
+          >
+            <Clock className="h-4 w-4" aria-hidden />
+          </Button>
+          <Button type="submit" disabled={!newTitle.trim()} loading={adding}>
+            {t("common.add")}
+          </Button>
+        </form>
+        {(showDlPicker || newDlDate || newDlTime) && (
+          <div className="space-y-1.5 border-t px-2 pb-1 pt-3 mt-2">
+            <DeadlinePicker
+              date={newDlDate}
+              time={newDlTime}
+              onDate={setNewDlDate}
+              onTime={setNewDlTime}
+              onClear={() => { setNewDlDate(""); setNewDlTime(""); setShowDlPicker(false); }}
+            />
+            {(newDlDate || newDlTime) && (() => {
+              const info = deadlineInfo(newDlDate || toDateString(new Date()), newDlTime, t, locale);
+              return info ? (
+                <p className={cn("inline-flex items-center gap-1 text-xs font-semibold", STATUS_CLASSES[info.status])}>
+                  <Clock className="h-3 w-3" aria-hidden />
+                  {info.text}
+                </p>
+              ) : null;
+            })()}
+          </div>
+        )}
+      </Card>
+
+      {saveError && (
+        <ErrorState message={t("common.saveError")} onRetry={() => setSaveError(false)} retryLabel={t("common.dismiss")} />
+      )}
 
       {/* Task list */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">{t("day.tasks")}</CardTitle>
-            <span className="text-xs text-muted-foreground">{t("common.doneCount", { done: completed, total: tasks.length })}</span>
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-1">
-          {loading ? (
-            <p className="text-sm text-muted-foreground">{t("day.loading")}</p>
-          ) : displayedTasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t("day.noTasks")}</p>
-          ) : (
-            displayedTasks.map((task) => {
-              const overdue    = isOverdue(task, now);
-              const isDragging = dragId === task.id;
-              const isDragOver = dragOverId === task.id;
-              const isEditing  = editingId === task.id;
-              const isPicking  = dlPickerId === task.id;
-
-              return (
-                <div
-                  key={task.id}
-                  draggable
-                  onDragStart={(e) => {
-                    // Reorder first (sets effectAllowed="move"), then the chat
-                    // payload, which sets "copyMove" so the panel can accept it.
-                    if (!overdue) handleDragStart(e, task.id);
-                    setChatDragItem(e, {
-                      kind: "task",
-                      title: task.title,
-                      priority: task.priority,
-                      deadline: task.deadline_date,
-                      completed: task.is_completed,
-                    });
-                  }}
-                  onDragOver={(e) => handleDragOver(e, task.id)}
-                  onDrop={() => handleDrop(task.id)}
-                  onDragEnd={handleDragEnd}
-                  className={[
-                    "group flex flex-col rounded-md border px-2 py-2 transition-all select-none",
-                    overdue && !task.is_completed
-                      ? "border-red-200 bg-red-50/60 dark:border-red-900 dark:bg-red-950/20"
-                      : "",
-                    isDragging ? "opacity-40" : "opacity-100",
-                    isDragOver ? "!border-primary border-dashed !bg-primary/5" : "",
-                  ].join(" ")}
-                >
-                  {/* Main row */}
-                  <div className="flex items-center gap-2">
-                    {/* Drag handle — hidden for overdue tasks */}
-                    <span
-                      className={`shrink-0 text-muted-foreground/30 transition-opacity ${
-                        overdue ? "invisible" : "group-hover:text-muted-foreground cursor-grab active:cursor-grabbing"
-                      }`}
-                    >
-                      <GripVertical className="h-4 w-4" />
-                    </span>
-
-                    {/* Completion toggle */}
-                    <button
-                      onClick={() => toggleTask(task)}
-                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
-                        task.is_completed
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : overdue
-                          ? "border-red-400 hover:border-red-600"
-                          : "border-muted-foreground hover:border-primary"
-                      }`}
-                    >
-                      {task.is_completed && <Check className="h-3 w-3" />}
-                    </button>
-
-                    {/* Title (normal or edit mode) */}
-                    {isEditing ? (
-                      <div className="flex flex-1 items-center gap-1">
-                        <input
-                          ref={editInputRef}
-                          type="text"
-                          value={editingValue}
-                          onChange={(e) => setEditingValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") saveEdit(task.id);
-                            if (e.key === "Escape") setEditingId(null);
-                          }}
-                          className="flex-1 rounded border bg-background px-2 py-0.5 text-sm outline-none focus:ring-2 focus:ring-ring"
-                        />
-                        <button onClick={() => saveEdit(task.id)} className="shrink-0 text-primary hover:opacity-70"><Check className="h-4 w-4" /></button>
-                        <button onClick={() => setEditingId(null)} className="shrink-0 text-muted-foreground hover:opacity-70"><X className="h-4 w-4" /></button>
-                      </div>
-                    ) : (
-                      <>
-                        <span className={`flex-1 text-sm ${task.is_completed ? "line-through text-muted-foreground" : ""}`}>
-                          {task.title}
-                        </span>
-
-                        {/* Deadline badge — click to edit deadline */}
-                        {!isPicking && (
-                          <DeadlineBadge task={task} onClick={() => openDeadlinePicker(task)} />
-                        )}
-
-                        {/* "Add deadline" ghost link — shown on hover when no deadline */}
-                        {!task.deadline_date && !task.is_completed && !isPicking && (
-                          <button
-                            onClick={() => openDeadlinePicker(task)}
-                            className="shrink-0 flex items-center gap-1 text-xs text-muted-foreground/0 transition-all group-hover:text-muted-foreground/50 hover:!text-muted-foreground"
-                          >
-                            <Clock className="h-3 w-3" />
-                          </button>
-                        )}
-
-                        <Badge
-                          variant={PRIORITY_COLORS[task.priority as keyof typeof PRIORITY_COLORS] ?? "outline"}
-                          className="cursor-pointer text-xs shrink-0"
-                          onClick={() => cyclePriority(task)}
-                          title={t("day.changePriority")}
-                        >
-                          {task.priority}
-                        </Badge>
-
-                        <button
-                          onClick={() => { setEditingId(task.id); setEditingValue(task.title); }}
-                          className="shrink-0 text-muted-foreground/0 transition-all group-hover:text-muted-foreground/40 hover:!text-muted-foreground"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 shrink-0 text-muted-foreground/0 transition-all group-hover:text-muted-foreground/40 hover:!text-destructive"
-                          onClick={() => deleteTask(task.id)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Inline deadline picker for existing task */}
-                  {isPicking && (
-                    <div className="mt-1.5 pl-10">
-                      <DeadlinePicker
-                        date={dlPickerDate}
-                        time={dlPickerTime}
-                        onDate={setDlPickerDate}
-                        onTime={setDlPickerTime}
-                        onClear={() => { setDlPickerDate(""); setDlPickerTime(""); }}
-                        compact
-                      />
-                      <div className="mt-1.5 flex gap-2">
-                        <button
-                          onClick={() => saveDeadline(task.id)}
-                          className="rounded px-2 py-0.5 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => setDlPickerId(null)}
-                          className="text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-
-          {/* Add task form */}
-          <div className="space-y-1 pt-2">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addTask()}
-                placeholder={t("day.addPlaceholder")}
-                className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none ring-offset-background focus:ring-2 focus:ring-ring"
-              />
-              <Button size="sm" onClick={addTask}><Plus className="h-4 w-4" /></Button>
-            </div>
-
-            {/* "Add deadline" subtle link */}
-            {!showDlPicker && !newDlDate && !newDlTime ? (
-              <button
-                type="button"
-                onClick={() => setShowDlPicker(true)}
-                className="flex items-center gap-1 pl-1 text-xs text-muted-foreground/40 transition-colors hover:text-muted-foreground"
-              >
-                <Clock className="h-3 w-3" />
-                Add deadline
-              </button>
+      <section aria-labelledby="tasks-heading" className="space-y-2">
+        <h2 id="tasks-heading" className="sr-only">{t("day.tasks")}</h2>
+        {loading ? (
+          <SkeletonRows rows={4} label={t("day.loading")} />
+        ) : loadError ? (
+          <ErrorState message={t("common.loadError")} onRetry={() => setReload((n) => n + 1)} retryLabel={t("common.retry")} />
+        ) : tasks.length === 0 ? (
+          <EmptyState
+            icon={Sun}
+            title={t("day.emptyTitle")}
+            hint={t("day.emptyHint")}
+            action={<Button variant="outline" size="sm" onClick={() => addInputRef.current?.focus()}><Plus className="h-4 w-4" aria-hidden />{t("day.addPlaceholder").replace(/\.+$/, "")}</Button>}
+          />
+        ) : (
+          <>
+            {openTasks.length === 0 ? (
+              <div className="flex items-center gap-3 rounded-xl bg-success-soft px-4 py-3 text-sm font-medium text-success">
+                <PartyPopper className="h-5 w-5 shrink-0" aria-hidden />
+                {t("day.allDone")}
+              </div>
             ) : (
-              <div className="pl-1">
-                <DeadlinePicker
-                  date={newDlDate}
-                  time={newDlTime}
-                  onDate={setNewDlDate}
-                  onTime={setNewDlTime}
-                  onClear={() => { setNewDlDate(""); setNewDlTime(""); setShowDlPicker(false); }}
-                />
-                {(newDlDate || newDlTime) && (() => {
-                  const info = deadlineInfo(newDlDate || toDateString(new Date()), newDlTime, t, locale);
-                  return info ? (
-                    <span className={`mt-0.5 inline-flex items-center gap-1 text-xs font-medium ${STATUS_CLASSES[info.status]}`}>
-                      <Clock className="h-3 w-3" />
-                      {info.text}
-                    </span>
-                  ) : null;
-                })()}
+              <ul className="space-y-0.5">{openTasks.map(renderTask)}</ul>
+            )}
+
+            {doneTasks.length > 0 && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCompleted((v) => !v)}
+                  aria-expanded={showCompleted}
+                  className="flex min-h-[44px] items-center gap-1.5 rounded-lg px-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
+                >
+                  <ChevronDown className={cn("h-4 w-4 transition-transform duration-150", !showCompleted && "-rotate-90")} aria-hidden />
+                  {t("day.completedSection", { n: doneTasks.length })}
+                </button>
+                {showCompleted && <ul className="space-y-0.5">{doneTasks.map(renderTask)}</ul>}
               </div>
             )}
-          </div>
-        </CardContent>
-      </Card>
+          </>
+        )}
+      </section>
+
+      <MotivationalBanner />
+
+      {lastDeleted && (
+        <UndoToast
+          message={t("day.taskDeleted")}
+          actionLabel={t("common.undo")}
+          onAction={undoDelete}
+          onDismiss={dismissUndo}
+        />
+      )}
     </div>
   );
 }

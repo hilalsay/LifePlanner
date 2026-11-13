@@ -22,21 +22,21 @@ const MOOD_EMOJIS = ["", "😞", "😔", "😐", "🙂", "😊", "😄", "😁",
 
 // Background tint per mood score (1–10), red → green. Tinted for light/dark.
 const MOOD_BG: Record<number, string> = {
-  1: "bg-red-200/70 dark:bg-red-500/25",
-  2: "bg-red-100/70 dark:bg-red-500/20",
-  3: "bg-orange-100/70 dark:bg-orange-500/20",
-  4: "bg-amber-100/70 dark:bg-amber-500/20",
-  5: "bg-yellow-100/70 dark:bg-yellow-500/20",
-  6: "bg-lime-100/70 dark:bg-lime-500/20",
-  7: "bg-green-100/70 dark:bg-green-500/20",
-  8: "bg-green-200/70 dark:bg-green-500/25",
-  9: "bg-emerald-200/70 dark:bg-emerald-500/30",
-  10: "bg-emerald-300/70 dark:bg-emerald-500/35",
+  1: "bg-danger/30",
+  2: "bg-danger/20",
+  3: "bg-warning/25",
+  4: "bg-warning/[0.18]",
+  5: "bg-warning/10",
+  6: "bg-success/10",
+  7: "bg-success/[0.16]",
+  8: "bg-success/[0.22]",
+  9: "bg-success/[0.28]",
+  10: "bg-success/[0.36]",
 };
 
 const PRIORITY_COLORS = {
   high: "destructive",
-  medium: "default",
+  medium: "warning",
   low: "secondary",
 } as const;
 
@@ -155,11 +155,11 @@ export function CalendarOverview() {
     <div className="mx-auto max-w-2xl space-y-4">
       {/* month navigation */}
       <div className="flex items-center justify-between">
-        <Button variant="outline" size="sm" onClick={() => setMonth((m) => subMonths(m, 1))}>
+        <Button aria-label={t("common.prev")} variant="outline" size="sm" onClick={() => setMonth((m) => subMonths(m, 1))}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <h2 className="font-semibold">{format(month, "MMMM yyyy", { locale })}</h2>
-        <Button variant="outline" size="sm" onClick={() => setMonth((m) => addMonths(m, 1))}>
+        <Button aria-label={t("common.next")} variant="outline" size="sm" onClick={() => setMonth((m) => addMonths(m, 1))}>
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>

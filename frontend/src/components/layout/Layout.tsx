@@ -7,7 +7,9 @@ import { TopBar } from "./TopBar";
 import { AssistantPanel } from "@/components/chat/AssistantPanel";
 import { useI18n } from "@/contexts/LanguageContext";
 
-const TITLE_PATHS = new Set(["/", "/week", "/month", "/year", "/vision", "/habits", "/tracking", "/settings"]);
+const TITLE_PATHS = new Set([
+  "/today", "/week", "/month", "/year", "/vision", "/habits", "/tracking", "/overview", "/settings",
+]);
 
 export function Layout() {
   const { pathname } = useLocation();
@@ -15,6 +17,11 @@ export function Layout() {
   const title = TITLE_PATHS.has(pathname) ? t(`title.${pathname}`) : t("title.default");
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Keep the browser tab title in sync with the page.
+  useEffect(() => {
+    document.title = title === "Life Planner" ? title : `${title} · Life Planner`;
+  }, [title]);
 
   // On mobile AIzen covers the whole screen, so close it when the route changes
   // (e.g. tapping a bottom-nav tab). On desktop the panel sits beside the content,
@@ -27,6 +34,12 @@ export function Layout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
+      <a
+        href="#main"
+        className="sr-only z-[100] rounded-lg bg-primary px-4 py-2 text-primary-foreground focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
+      >
+        {t("nav.skip")}
+      </a>
       <Sidebar />
       <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -36,8 +49,10 @@ export function Layout() {
           onToggleAssistant={() => setAssistantOpen((o) => !o)}
           onOpenMenu={() => setDrawerOpen(true)}
         />
-        <main className="flex-1 overflow-y-auto p-4 pb-20 md:pb-4">
-          <Outlet />
+        <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto px-4 pb-24 pt-4 outline-none md:px-8 md:pb-10 md:pt-6">
+          <div key={pathname} className="animate-fade-in">
+            <Outlet />
+          </div>
         </main>
         <BottomNav />
       </div>

@@ -140,7 +140,7 @@ export function MonthlyFocusDetail({ focus, onUpdate, onDelete }: Props) {
             <button onClick={() => setEditing(false)} className="text-xs text-muted-foreground hover:text-foreground">
               {t("common.cancel")}
             </button>
-            <button onClick={onDelete} className="ml-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive">
+            <button onClick={onDelete} className="ml-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-danger">
               <Trash2 className="h-3.5 w-3.5" /> {t("focusDetail.deleteFocus")}
             </button>
           </div>
@@ -186,9 +186,9 @@ export function MonthlyFocusDetail({ focus, onUpdate, onDelete }: Props) {
               {p.title}
             </span>
             <span className="shrink-0 text-[10px] text-muted-foreground">{t("focusDetail.weekShort", { n: p.week_number })}</span>
-            <button
+            <button aria-label={t("common.delete")}
               onClick={() => deleteTask(p.id)}
-              className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover/task:opacity-100"
+              className="row-action shrink-0 text-muted-foreground hover:text-danger"
             >
               <Trash2 className="h-3 w-3" />
             </button>
@@ -215,7 +215,7 @@ export function MonthlyFocusDetail({ focus, onUpdate, onDelete }: Props) {
             placeholder={t("focusDetail.addWeeklyTaskPlaceholder")}
             className="min-w-0 flex-1 rounded-md border bg-background px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
           />
-          <button
+          <button aria-label={t("common.add")}
             onClick={addTask}
             className="shrink-0 rounded-md bg-primary px-2 text-primary-foreground hover:bg-primary/90"
           >

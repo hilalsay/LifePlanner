@@ -39,10 +39,10 @@ export function BookCover({
 }
 
 export const STATUS_STYLES = {
-  reading:   { emoji: "📖", labelKey: "tracking.bookReading",   classes: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
-  completed: { emoji: "✅", labelKey: "tracking.bookCompleted", classes: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" },
-  to_read:   { emoji: "📚", labelKey: "tracking.bookToRead",    classes: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
-  abandoned: { emoji: "❌", labelKey: "tracking.bookAbandoned", classes: "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300" },
+  reading:   { emoji: "📖", labelKey: "tracking.bookReading",   classes: "bg-info-soft text-info" },
+  completed: { emoji: "✅", labelKey: "tracking.bookCompleted", classes: "bg-success-soft text-success" },
+  to_read:   { emoji: "📚", labelKey: "tracking.bookToRead",    classes: "bg-muted text-muted-foreground" },
+  abandoned: { emoji: "❌", labelKey: "tracking.bookAbandoned", classes: "bg-danger-soft text-danger" },
 } as const;
 
 const STATUSES = ["to_read", "reading", "completed", "abandoned"] as const;
@@ -73,7 +73,7 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
         >
           <Star
             className={`h-7 w-7 transition-colors ${
-              n <= (hover || value) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"
+              n <= (hover || value) ? "fill-warning text-warning" : "text-muted-foreground/30"
             }`}
           />
         </button>
@@ -218,7 +218,7 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
               <StatusPill status={status} />
             </div>
           </div>
-          <button onClick={onClose} className="shrink-0 rounded-full p-1.5 hover:bg-muted transition-colors mt-0.5">
+          <button aria-label={t("common.close")} onClick={onClose} className="shrink-0 rounded-full p-1.5 hover:bg-muted transition-colors mt-0.5">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -296,7 +296,7 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
             <h3 className="text-sm font-semibold">{t("tracking.myReview")}</h3>
 
             {showReviewPrompt && (
-              <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+              <div className="rounded-lg bg-warning-soft border border-warning/30 px-3 py-2 text-xs text-warning">
                 🎉 {t("tracking.completedPrompt")}
               </div>
             )}
@@ -321,7 +321,7 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
         {/* Saved confirmation */}
         {saved && (
           <div className="px-4 pt-3 shrink-0">
-            <div className="flex items-center justify-center gap-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700 px-3 py-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+            <div className="flex items-center justify-center gap-2 rounded-lg bg-success-soft border border-success/30 px-3 py-2 text-sm font-medium text-success">
               <Check className="h-4 w-4" />
               {t("common.saved")}
             </div>
@@ -336,8 +336,8 @@ export function BookDetailModal({ book, onClose, onUpdated, onDeleted }: Props) 
           <Button
             variant="outline"
             onClick={handleDelete}
-            className={confirmDelete ? "border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground px-3" : "px-3"}
-            title={t("common.delete")}
+            className={confirmDelete ? "border-destructive text-danger hover:bg-destructive hover:text-destructive-foreground px-3" : "px-3"}
+            title={t("common.delete")} aria-label={t("common.delete")}
           >
             {confirmDelete ? <span className="text-xs">{t("tracking.confirmDelete")}</span> : <Trash2 className="h-4 w-4" />}
           </Button>

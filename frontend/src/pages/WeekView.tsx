@@ -57,7 +57,7 @@ function WeeklyReviewCard({ year, week, isCurrentWeek }: { year: number; week: n
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-base flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-violet-500" />
+            <Sparkles className="h-4 w-4 text-primary" />
             {t("week.aiReview")}
           </CardTitle>
           {isCurrentWeek && (
@@ -172,8 +172,8 @@ export function WeekView() {
             title={o.nextWeek ? `Next ${o.label} · ${o.date}` : o.date}
             className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
               value === o.date
-                ? "bg-blue-500 text-white"
-                : "bg-muted text-muted-foreground hover:bg-blue-100 hover:text-blue-600 dark:hover:bg-blue-900/30 dark:hover:text-blue-400"
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground hover:bg-info-soft hover:text-info"
             }`}
           >
             {o.label}{o.nextWeek ? " ›" : ""}
@@ -186,7 +186,7 @@ export function WeekView() {
           className="rounded border bg-background px-1.5 py-0.5 text-xs outline-none focus:ring-1 focus:ring-ring"
         />
         {value && (
-          <button onClick={onClear} className="text-muted-foreground hover:text-foreground">
+          <button aria-label={t("common.close")} onClick={onClear} className="text-muted-foreground hover:text-foreground">
             <X className="h-3 w-3" />
           </button>
         )}
@@ -260,7 +260,7 @@ export function WeekView() {
                 }
                 className={`group flex flex-col rounded-md border px-3 py-2 transition-colors ${
                   dlInfo?.overdue && !p.is_completed
-                    ? "border-red-200 bg-red-50/60 dark:border-red-900 dark:bg-red-950/20"
+                    ? "border-danger/30 bg-danger-soft/60"
                     : ""
                 }`}
               >
@@ -285,9 +285,9 @@ export function WeekView() {
                     <button
                       onClick={() => openDlPicker(p)}
                       className={`flex items-center gap-1 text-xs font-medium ${
-                        dlInfo.overdue ? "text-red-500 dark:text-red-400"
-                        : dlInfo.urgent ? "text-orange-500 dark:text-orange-400"
-                        : "text-blue-500 dark:text-blue-400"
+                        dlInfo.overdue ? "text-danger"
+                        : dlInfo.urgent ? "text-warning"
+                        : "text-info"
                       } hover:opacity-70`}
                     >
                       <Clock className="h-3 w-3" />
@@ -297,9 +297,9 @@ export function WeekView() {
 
                   {/* Ghost clock — shown on hover when no deadline */}
                   {!p.deadline_date && !p.is_completed && !picking && (
-                    <button
+                    <button aria-label={t("day.setDeadline")}
                       onClick={() => openDlPicker(p)}
-                      className="text-muted-foreground/0 transition-all group-hover:text-muted-foreground/40 hover:!text-muted-foreground"
+                      className="row-action text-muted-foreground/70 hover:text-foreground"
                     >
                       <Clock className="h-3.5 w-3.5" />
                     </button>
@@ -342,7 +342,7 @@ export function WeekView() {
                 placeholder={t("week.addPriorityPlaceholder")}
                 className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
-              <Button size="sm" onClick={addPriority}><Plus className="h-4 w-4" /></Button>
+              <Button aria-label={t("common.add")} size="sm" onClick={addPriority}><Plus className="h-4 w-4" /></Button>
             </div>
 
             {!showDlPicker && !newDeadline ? (

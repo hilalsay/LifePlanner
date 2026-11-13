@@ -17,35 +17,39 @@ export function TopBar({ title, assistantOpen, onToggleAssistant, onOpenMenu }: 
   const { t } = useI18n();
 
   return (
-    <header className="flex h-14 items-center justify-between border-b bg-card px-2 md:px-4">
-      <div className="flex items-center gap-1">
+    <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b bg-background/90 px-2 backdrop-blur md:h-16 md:px-6">
+      <div className="flex min-w-0 items-center gap-1">
         <Button
           variant="ghost"
           size="icon"
           onClick={onOpenMenu}
-          title={t("nav.menu")}
+          aria-label={t("nav.menu")}
           className="h-11 w-11 md:hidden"
         >
-          <Menu className="h-5 w-5" />
+          <Menu className="h-5 w-5" aria-hidden />
         </Button>
-        <h1 className="text-base font-semibold">{title}</h1>
+        <h1 className="truncate font-display text-xl font-semibold md:text-2xl">{title}</h1>
       </div>
-      <div className="flex items-center gap-1">
-        <LanguageToggle />
+      <div className="flex shrink-0 items-center gap-1">
+        <LanguageToggle className="hidden sm:inline-flex" />
         <Button
           variant="ghost"
-          onClick={onToggleAssistant}
-          title={t("topbar.assistant")}
-          className={cn("h-10 gap-1.5 px-2.5", assistantOpen && "bg-primary/10")}
+          size="icon"
+          onClick={toggle}
+          aria-label={t("topbar.toggleTheme")}
+          title={t("topbar.toggleTheme")}
         >
-          <Sparkles className="h-4 w-4 text-primary" />
-          <span className="text-sm">
-            <span className="font-bold text-primary">AI</span>
-            <span className="font-semibold">zen</span>
-          </span>
+          {theme === "dark" ? <Sun className="h-[18px] w-[18px]" aria-hidden /> : <Moon className="h-[18px] w-[18px]" aria-hidden />}
         </Button>
-        <Button variant="ghost" size="icon" onClick={toggle} title={t("topbar.toggleTheme")}>
-          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        <Button
+          variant={assistantOpen ? "default" : "outline"}
+          onClick={onToggleAssistant}
+          aria-pressed={assistantOpen}
+          title={t("topbar.assistant")} aria-label={t("topbar.assistant")}
+          className={cn("ml-1 h-10 gap-1.5 rounded-full px-3.5")}
+        >
+          <Sparkles className="h-4 w-4" aria-hidden />
+          <span>AIzen</span>
         </Button>
       </div>
     </header>

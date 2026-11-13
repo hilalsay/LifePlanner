@@ -129,7 +129,7 @@ export function VisionBoard() {
                   placeholder={t("vision.newAreaPlaceholder")}
                   className="w-32 rounded-md border bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
                 />
-                <Button size="sm" variant="outline" onClick={addArea}>
+                <Button aria-label={t("common.add")} size="sm" variant="outline" onClick={addArea}>
                   <Plus className="h-3 w-3" />
                 </Button>
               </div>
@@ -182,10 +182,10 @@ export function VisionBoard() {
                         }}
                         className="flex-1 rounded border bg-background px-2 py-0.5 text-sm outline-none focus:ring-2 focus:ring-ring"
                       />
-                      <button onClick={() => saveGoalEdit(g.id)} className="text-primary hover:opacity-70">
+                      <button aria-label={t("common.save")} onClick={() => saveGoalEdit(g.id)} className="text-primary hover:opacity-70">
                         <Check className="h-4 w-4" />
                       </button>
-                      <button onClick={() => setEditingGoalId(null)} className="text-muted-foreground hover:opacity-70">
+                      <button aria-label={t("common.close")} onClick={() => setEditingGoalId(null)} className="text-muted-foreground hover:opacity-70">
                         <X className="h-4 w-4" />
                       </button>
                     </div>
@@ -212,16 +212,16 @@ export function VisionBoard() {
                             {Math.round(g.progress)}%
                           </span>
                         )}
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
+                        <div className="row-action flex items-center gap-1">
+                          <button aria-label={t("common.edit")}
                             onClick={() => { setEditingGoalId(g.id); setEditingGoalValue(g.title); }}
                             className="text-muted-foreground hover:text-foreground"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
-                          <button
+                          <button aria-label={t("common.delete")}
                             onClick={() => deleteGoal(g.id)}
-                            className="text-muted-foreground hover:text-destructive"
+                            className="text-muted-foreground hover:text-danger"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -229,7 +229,7 @@ export function VisionBoard() {
                         <Badge variant={g.status === "completed" ? "secondary" : "outline"} className="text-xs">
                           {t(`status.${g.status}`)}
                         </Badge>
-                        <button
+                        <button aria-label={t("common.expand")}
                           onClick={() => setDetailGoal(g)}
                           className="rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                           title={t("vision.viewDetails")}
@@ -252,7 +252,7 @@ export function VisionBoard() {
                 placeholder={selectedArea ? t("vision.addGoalToArea", { name: selectedAreaName ?? "" }) : t("vision.addGoalPlaceholder")}
                 className="flex-1 rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
               />
-              <Button size="sm" onClick={addGoal}>
+              <Button aria-label={t("common.add")} size="sm" onClick={addGoal}>
                 <Plus className="h-4 w-4" />
               </Button>
             </div>

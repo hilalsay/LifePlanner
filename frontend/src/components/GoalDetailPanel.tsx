@@ -10,9 +10,9 @@ import { format } from "date-fns";
 const STATUS_OPTIONS = ["active", "completed", "abandoned"] as const;
 
 const STATUS_COLORS: Record<string, string> = {
-  active: "text-blue-600 bg-blue-50 border-blue-200",
-  completed: "text-green-600 bg-green-50 border-green-200",
-  abandoned: "text-red-500 bg-red-50 border-red-200",
+  active: "text-info bg-info-soft border-info/30",
+  completed: "text-success bg-success-soft border-success/30",
+  abandoned: "text-danger bg-danger-soft border-danger/30",
 };
 
 interface Props {
@@ -126,7 +126,7 @@ export function GoalDetailPanel({ goal, areas, onClose, onUpdate }: Props) {
                 {saving ? t("common.saving") : t("common.save")}
               </Button>
             )}
-            <button
+            <button aria-label={t("common.close")}
               onClick={onClose}
               className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
@@ -267,13 +267,13 @@ export function GoalDetailPanel({ goal, areas, onClose, onUpdate }: Props) {
                     </Badge>
                     <span className="flex-1 text-sm">{f.title}</span>
                     {f.deadline_date && (
-                      <span className="text-xs text-muted-foreground shrink-0 hidden group-hover:inline">
+                      <span className="row-action text-xs text-muted-foreground shrink-0">
                         {f.deadline_date}
                       </span>
                     )}
-                    <button
+                    <button aria-label={t("common.delete")}
                       onClick={() => deleteFocus(f.id)}
-                      className="text-muted-foreground hover:text-destructive shrink-0 transition-colors"
+                      className="text-muted-foreground hover:text-danger shrink-0 transition-colors"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -312,7 +312,7 @@ export function GoalDetailPanel({ goal, areas, onClose, onUpdate }: Props) {
                   placeholder={t("goalDetail.milestonePlaceholder")}
                   className="flex-1 min-w-0 rounded-md border bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
                 />
-                <Button size="sm" variant="outline" onClick={addFocus} className="shrink-0">
+                <Button aria-label={t("common.add")} size="sm" variant="outline" onClick={addFocus} className="shrink-0">
                   <Plus className="h-3 w-3" />
                 </Button>
               </div>

@@ -39,10 +39,10 @@ interface AssistantPanelProps {
 }
 
 const KIND_META: Record<SuggestionKind, { icon: typeof Calendar; className: string }> = {
-  monthly: { icon: Calendar, className: "text-violet-500" },
+  monthly: { icon: Calendar, className: "text-primary" },
   weekly: { icon: CalendarRange, className: "text-sky-500" },
-  habit: { icon: Flame, className: "text-orange-500" },
-  task: { icon: CheckSquare, className: "text-emerald-500" },
+  habit: { icon: Flame, className: "text-warning" },
+  task: { icon: CheckSquare, className: "text-success" },
 };
 
 // Fallback for non-actionable / unknown kinds (e.g. "insight") the model may
@@ -67,8 +67,8 @@ function AttachmentChip({ item, onRemove }: { item: DragItem; onRemove?: () => v
       {onRemove && (
         <button
           onClick={onRemove}
-          title={t("assistant.removeAttachment")}
-          className="shrink-0 text-muted-foreground hover:text-destructive"
+          title={t("assistant.removeAttachment")} aria-label={t("assistant.removeAttachment")}
+          className="shrink-0 text-muted-foreground hover:text-danger"
         >
           <X className="h-3 w-3" />
         </button>
@@ -397,10 +397,10 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
             </span>
           </div>
           <div className="flex items-center gap-0.5">
-            <Button variant="ghost" size="icon" onClick={startNewChat} title={t("assistant.newChat")}>
+            <Button variant="ghost" size="icon" onClick={startNewChat} title={t("assistant.newChat")} aria-label={t("assistant.newChat")}>
               <SquarePen className="h-4 w-4" />
             </Button>
-            <Button
+            <Button aria-label={t("common.history")}
               variant="ghost"
               size="icon"
               onClick={() => setShowHistory((v) => !v)}
@@ -409,7 +409,7 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
             >
               <History className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={onClose} title={t("assistant.close")}>
+            <Button variant="ghost" size="icon" onClick={onClose} title={t("assistant.close")} aria-label={t("assistant.close")}>
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -471,7 +471,7 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
                 </div>
               )}
               <div className="flex items-end gap-2">
-                <Button
+                <Button aria-label={t("common.attach")}
                   variant="ghost"
                   size="icon"
                   onClick={() => setShowPicker((v) => !v)}
@@ -822,10 +822,10 @@ function HistoryView({
                     <span className="truncate font-medium">{c.title}</span>
                     <span className="text-[11px] text-muted-foreground">{relativeTime(c.updated_at, t)}</span>
                   </button>
-                  <button
+                  <button aria-label={t("common.delete")}
                     onClick={() => onDelete(c.id)}
                     title={t("assistant.deleteConversation")}
-                    className="shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                    className="row-action shrink-0 text-muted-foreground hover:text-danger"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>

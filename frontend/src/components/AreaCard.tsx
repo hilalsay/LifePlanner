@@ -139,15 +139,15 @@ export function AreaCard({ area, goals, selected, onSelect, onUpdate, onDelete }
             <div className="flex items-center justify-between pt-0.5">
               <button
                 onClick={onDelete}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive"
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-danger"
               >
                 <Trash2 className="h-3.5 w-3.5" /> {t("common.delete")}
               </button>
               <div className="flex items-center gap-1">
-                <button onClick={() => setEditing(false)} className="rounded p-1 text-muted-foreground hover:bg-muted">
+                <button aria-label={t("common.close")} onClick={() => setEditing(false)} className="rounded p-1 text-muted-foreground hover:bg-muted">
                   <X className="h-4 w-4" />
                 </button>
-                <button onClick={saveAndClose} className="rounded p-1 text-primary hover:bg-muted">
+                <button aria-label={t("common.save")} onClick={saveAndClose} className="rounded p-1 text-primary hover:bg-muted">
                   <Check className="h-4 w-4" />
                 </button>
               </div>
@@ -159,7 +159,7 @@ export function AreaCard({ area, goals, selected, onSelect, onUpdate, onDelete }
               onClick={toggleActive}
               className="h-3 w-3 shrink-0 rounded-full transition-transform hover:scale-125"
               style={{ backgroundColor: area.color }}
-              title={area.is_active ? t("area.clickDeactivate") : t("area.clickActivate")}
+              title={area.is_active ? t("area.clickDeactivate") : t("area.clickActivate")} aria-label={area.is_active ? t("area.clickDeactivate") : t("area.clickActivate")}
             />
             <h3
               className="flex-1 cursor-pointer truncate text-sm font-semibold"
@@ -170,9 +170,9 @@ export function AreaCard({ area, goals, selected, onSelect, onUpdate, onDelete }
             {inactive && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0">{t("area.inactive")}</Badge>
             )}
-            <button
+            <button aria-label={t("nav.settings")}
               onClick={(e) => { e.stopPropagation(); setEditing(true); }}
-              className="text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+              className="row-action text-muted-foreground hover:text-foreground"
               title={t("area.customize")}
             >
               <Settings2 className="h-3.5 w-3.5" />

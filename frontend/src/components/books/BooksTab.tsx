@@ -13,7 +13,7 @@ function MiniStars({ rating }: { rating?: number }) {
       {[1, 2, 3, 4, 5].map((n) => (
         <Star
           key={n}
-          className={`h-3 w-3 ${n <= rating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/20"}`}
+          className={`h-3 w-3 ${n <= rating ? "fill-warning text-warning" : "text-muted-foreground/20"}`}
         />
       ))}
     </div>
@@ -171,7 +171,7 @@ export function BooksTab() {
 
             {/* Search error */}
             {searchError && (
-              <p className="mt-1.5 text-xs text-destructive">{searchError}</p>
+              <p className="mt-1.5 text-xs text-danger">{searchError}</p>
             )}
 
             {/* Google Books dropdown */}
