@@ -1,142 +1,92 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  CalendarDays,
-  CalendarRange,
-  Target,
-  Flame,
-  BarChart3,
-  BookOpen,
-  Sparkles,
-  ArrowRight,
-  Github,
-  Check,
+  ArrowRight, BookOpen, Calendar, CalendarDays, CalendarRange, Check, Clock, Flag,
+  Flame, Github, HeartPulse, Loader2, Sparkles, Target,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { cn } from "@/lib/utils";
 
-// ── Design tokens ─────────────────────────────────────────────────────────────
-const ink    = "#E8E6FF";
-const inkDim = "#B8B4DC";
-const muted  = "#6B7499";
-const violet = "#6366f1";
-const vLight = "#a5b4fc";
-const bg     = "#06091A";
-const surf   = "#0B1228";
-const border = "rgba(99,102,241,0.18)";
-
-// ── Features data ─────────────────────────────────────────────────────────────
-const features = [
-  {
-    Icon: CalendarDays,
-    title: "Day & Week Planning",
-    desc: "Drag tasks between days, see your week at a glance, and adjust priorities without friction.",
-  },
-  {
-    Icon: Target,
-    title: "Vision Board",
-    desc: "Define where you're headed. Break big goals into yearly and monthly focus areas.",
-  },
-  {
-    Icon: Flame,
-    title: "Habit Tracker",
-    desc: "Build the routines that shape who you're becoming. Streaks, logs, and honest data.",
-  },
-  {
-    Icon: BarChart3,
-    title: "Health & Mood",
-    desc: "Track sleep, workouts, and mood. Understand what fuels your best days.",
-  },
-  {
-    Icon: BookOpen,
-    title: "Book Log",
-    desc: "Record what you're reading and what it teaches you — in context with your goals.",
-  },
-  {
-    Icon: CalendarRange,
-    title: "Year at a Glance",
-    desc: "A bird's-eye view of your entire year. Spot patterns. Protect what matters.",
-  },
+// Copy is English-only, like the rest of the public page.
+const LADDER = [
+  { Icon: Target, label: "Vision", text: "Life areas and the few goals that matter this year." },
+  { Icon: Calendar, label: "Month", text: "Monthly focuses that move each goal forward." },
+  { Icon: CalendarRange, label: "Week", text: "Priorities for the week, one tap from today's list." },
+  { Icon: CalendarDays, label: "Today", text: "Tasks, habits and a 30-second check-in." },
 ] as const;
 
-// ── Planner card mockup ───────────────────────────────────────────────────────
-function PlannerCard() {
-  const now   = new Date();
-  const days  = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const mons  = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const label = `${days[now.getDay()]}, ${mons[now.getMonth()]} ${now.getDate()}`;
+const FEATURES = [
+  { Icon: CalendarDays, title: "Today, in one screen", text: "Type “Call Ali tomorrow 10am !high” and it's scheduled. Unfinished tasks from earlier in the week are one tap from today." },
+  { Icon: Flame, title: "Habits that stick", text: "Check off today's habits right next to your tasks. Streaks and a weekly grid show where you're consistent." },
+  { Icon: HeartPulse, title: "Daily check-in", text: "Mood, energy, sleep and water in a few taps. It saves as you go." },
+  { Icon: Calendar, title: "Month at a glance", text: "A calendar tinted by mood. Tap any day to see what you did and how you felt." },
+  { Icon: Target, title: "Vision board", text: "Group goals into life areas, break them into monthly milestones, and track progress." },
+  { Icon: BookOpen, title: "Reading list", text: "Search any book, track pages, rate it and keep your notes." },
+] as const;
 
+// ── Product mockups (static, built from the app's own tokens) ────────────────
+
+function TodayMockup() {
   const tasks = [
-    { done: true,  text: "Morning run",          time: "8:00 AM"  },
-    { done: true,  text: "Review Q3 goals",       time: "10:30 AM" },
-    { done: false, text: "Write proposal draft",  time: "2:00 PM"  },
-    { done: false, text: "Gym session",           time: "6:00 PM"  },
+    { done: false, text: "Send the budget draft", meta: "Due 5:00 PM", tone: "text-warning", pri: "High", priCls: "bg-danger-soft text-danger" },
+    { done: false, text: "Read 30 pages of Deep Work", meta: "", tone: "", pri: "Medium", priCls: "bg-warning-soft text-warning" },
+    { done: true, text: "Morning run, 5 km", meta: "", tone: "", pri: "", priCls: "" },
   ];
-
   const habits = [
-    { name: "Gym",      filled: 4 },
-    { name: "Read",     filled: 3 },
-    { name: "Meditate", filled: 5 },
+    { name: "Meditate", done: true },
+    { name: "Read", done: true },
+    { name: "No sugar", done: false },
   ];
-
   return (
-    <div style={{
-      background: "rgba(11,18,40,0.97)",
-      border: `1px solid ${border}`,
-      borderRadius: 14,
-      padding: 20,
-    }}>
-      {/* Window chrome */}
-      <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 16 }}>
-        {[0.5, 0.3, 0.15].map((o, i) => (
-          <div key={i} style={{ width: 9, height: 9, borderRadius: "50%", background: `rgba(99,102,241,${o})` }} />
-        ))}
-        <span style={{ marginLeft: 8, fontSize: 11, color: muted, fontWeight: 500, letterSpacing: "0.03em" }}>
-          Life Planner
-        </span>
+    <div aria-hidden className="rounded-2xl border bg-card p-5 shadow-lg">
+      <p className="text-xs font-semibold text-primary">Friday <span className="ml-1 rounded-full bg-primary-soft px-2 py-0.5">Today</span></p>
+      <p className="mt-1 font-display text-2xl font-semibold">13 November</p>
+      <div className="mt-3 flex items-center justify-between text-xs">
+        <span className="font-medium">1 / 3 done</span>
+        <span className="text-muted-foreground">33%</span>
+      </div>
+      <div className="mt-1.5 h-1.5 rounded-full bg-secondary">
+        <div className="h-full w-1/3 rounded-full bg-primary" />
       </div>
 
-      <div style={{ fontSize: 12, color: muted, marginBottom: 14, letterSpacing: "0.01em" }}>{label}</div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 9, marginBottom: 18 }}>
-        {tasks.map((t) => (
-          <div key={t.text} style={{ display: "flex", alignItems: "center", gap: 9 }}>
-            <div style={{
-              width: 16, height: 16, borderRadius: 4, flexShrink: 0,
-              border: `1.5px solid ${t.done ? violet : "rgba(107,116,153,0.45)"}`,
-              background: t.done ? violet : "transparent",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              {t.done && <Check size={9} color="#fff" strokeWidth={3} />}
-            </div>
-            <span style={{
-              flex: 1, fontSize: 13,
-              color: t.done ? muted : ink,
-              textDecoration: t.done ? "line-through" : "none",
-            }}>
-              {t.text}
-            </span>
-            <span style={{ fontSize: 11, color: muted }}>{t.time}</span>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ borderTop: `1px solid ${border}`, paddingTop: 14 }}>
-        <div style={{ fontSize: 10, color: muted, marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.07em" }}>
-          Habits this week
+      <div className="mt-4 rounded-xl border bg-background p-2.5">
+        <p className="text-sm">Dentist tomorrow 10am !high<span className="ml-0.5 inline-block h-4 w-px translate-y-0.5 animate-pulse bg-foreground" /></p>
+        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-semibold">
+          <span className="inline-flex items-center gap-1 rounded-full bg-info-soft px-2 py-0.5 text-info"><CalendarDays className="h-3 w-3" />Sat 14 Nov</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-warning-soft px-2 py-0.5 text-warning"><Clock className="h-3 w-3" />10:00</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-danger-soft px-2 py-0.5 text-danger"><Flag className="h-3 w-3" />High</span>
         </div>
-        <div style={{ display: "flex", gap: 20 }}>
+      </div>
+
+      <ul className="mt-3 space-y-1">
+        {tasks.map((t) => (
+          <li key={t.text} className="flex items-center gap-2.5 py-1.5">
+            <span className={cn(
+              "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2",
+              t.done ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/50",
+            )}>
+              {t.done && <Check className="h-3 w-3" strokeWidth={3} />}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className={cn("block truncate text-sm", t.done && "text-muted-foreground line-through")}>{t.text}</span>
+              {t.meta && <span className={cn("text-[11px] font-semibold", t.tone)}>{t.meta}</span>}
+            </span>
+            {t.pri && <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", t.priCls)}>{t.pri}</span>}
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-3 border-t pt-3">
+        <p className="mb-2 flex items-center gap-1 text-xs font-semibold"><Flame className="h-3.5 w-3.5 text-warning" />Habits · 2/3</p>
+        <div className="flex flex-wrap gap-1.5">
           {habits.map((h) => (
-            <div key={h.name} style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
-              <div style={{ display: "flex", gap: 2 }}>
-                {Array.from({ length: 7 }, (_, i) => (
-                  <div key={i} style={{
-                    width: 5, height: 5, borderRadius: "50%",
-                    background: i < h.filled ? violet : "rgba(99,102,241,0.15)",
-                  }} />
-                ))}
-              </div>
-              <span style={{ fontSize: 10, color: muted }}>{h.name}</span>
-            </div>
+            <span key={h.name} className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium",
+              h.done ? "border-transparent bg-primary text-primary-foreground" : "bg-card",
+            )}>
+              {h.done && <Check className="h-3 w-3" strokeWidth={3} />}{h.name}
+            </span>
           ))}
         </div>
       </div>
@@ -144,36 +94,58 @@ function PlannerCard() {
   );
 }
 
-function AizenBubble() {
+function AizenNote() {
   return (
-    <div style={{
-      background: "rgba(99,102,241,0.07)",
-      border: `1px solid rgba(99,102,241,0.28)`,
-      borderRadius: 12,
-      padding: 16,
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <div style={{
-          width: 28, height: 28, borderRadius: "50%",
-          background: "rgba(99,102,241,0.2)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <Sparkles size={13} color={vLight} />
-        </div>
-        <span style={{ fontSize: 13, fontWeight: 600, color: vLight }}>AIzen</span>
-        <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}>
-          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80" }} />
-          <span style={{ fontSize: 11, color: muted }}>online</span>
-        </div>
-      </div>
-      <p style={{ fontSize: 13, color: inkDim, lineHeight: 1.55, margin: 0 }}>
-        Your proposal has been pending 3 days — you have a clear 2-hour window before your 6pm gym session. That's your best shot today.
+    <div aria-hidden className="rounded-2xl border bg-card p-4 shadow-md">
+      <p className="flex items-center gap-2 text-sm font-semibold">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary-soft text-primary"><Sparkles className="h-3.5 w-3.5" /></span>
+        AIzen
+      </p>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+        The budget draft has slipped twice. You have a free hour before 5pm. Want me to block it?
       </p>
     </div>
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+function ChatMockup() {
+  const Bubble = ({ me, children }: { me?: boolean; children: React.ReactNode }) => (
+    <div className={cn("flex gap-2.5", me ? "justify-end" : "items-start")}>
+      {!me && (
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary">
+          <Sparkles className="h-3.5 w-3.5" />
+        </span>
+      )}
+      <p className={cn(
+        "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
+        me ? "rounded-br-sm bg-primary text-primary-foreground" : "rounded-tl-sm border bg-card",
+      )}>{children}</p>
+    </div>
+  );
+  return (
+    <div aria-hidden className="overflow-hidden rounded-2xl border bg-background shadow-lg">
+      <div className="flex items-center gap-2.5 border-b bg-card px-4 py-3">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-soft text-primary"><Sparkles className="h-4 w-4" /></span>
+        <div>
+          <p className="text-sm font-semibold">AIzen</p>
+          <p className="text-xs text-muted-foreground">Your planning companion</p>
+        </div>
+      </div>
+      <div className="space-y-3 p-4">
+        <Bubble me>What should I focus on this week?</Bubble>
+        <Bubble>Your gym habit dropped to 2 of 7 last week, and “Deep Work” has been on your list for 12 days. Wednesday evening is open. Shall I add gym on Wed and Fri, and reading time on Thursday?</Bubble>
+        <Bubble me>Yes, add them.</Bubble>
+        <Bubble>Done. Gym on Wed and Fri at 6pm, reading Thu 2–4pm.</Bubble>
+        <div className="rounded-xl border bg-card px-3.5 py-2.5 text-sm text-muted-foreground">Ask AIzen about your plans…</div>
+      </div>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+const container = "mx-auto w-full max-w-6xl px-4 sm:px-6";
+
 export function LandingPage() {
   const { user, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -184,570 +156,200 @@ export function LandingPage() {
   }, [user, isLoading, navigate]);
 
   useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 24);
-    window.addEventListener("scroll", handler, { passive: true });
-    return () => window.removeEventListener("scroll", handler);
+    const onScroll = () => setScrolled(window.scrollY > 16);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   if (isLoading) {
     return (
-      <div style={{ display: "flex", height: "100vh", alignItems: "center", justifyContent: "center", background: bg }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: "50%",
-          border: `4px solid ${violet}`, borderTopColor: "transparent",
-          animation: "lp-spin 0.75s linear infinite",
-        }} />
-        <style>{`@keyframes lp-spin { to { transform: rotate(360deg); } }`}</style>
+      <div role="status" className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-7 w-7 animate-spin text-primary" aria-hidden />
+        <span className="sr-only">Loading</span>
       </div>
     );
   }
-
   if (user) return null;
 
   return (
-    <div style={{ background: bg, color: ink, minHeight: "100vh", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
-      <style>{`
-        .lp-serif {
-          font-family: 'Instrument Serif', Georgia, 'Times New Roman', serif;
-        }
-
-        .lp-nav-link {
-          color: ${muted};
-          text-decoration: none;
-          font-size: 14px;
-          font-weight: 500;
-          transition: color 0.15s;
-        }
-        .lp-nav-link:hover { color: ${ink}; }
-
-        .lp-btn-primary {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          background: ${violet};
-          color: #fff;
-          padding: 10px 20px;
-          border-radius: 8px;
-          font-size: 14px;
-          font-weight: 600;
-          text-decoration: none;
-          border: none;
-          cursor: pointer;
-          transition: background 0.15s, transform 0.1s;
-          white-space: nowrap;
-          font-family: inherit;
-        }
-        .lp-btn-primary:hover { background: #5254cc; transform: translateY(-1px); }
-        .lp-btn-primary:focus-visible { outline: 2px solid ${vLight}; outline-offset: 3px; }
-
-        .lp-btn-outline {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          background: transparent;
-          color: ${inkDim};
-          padding: 10px 20px;
-          border-radius: 8px;
-          font-size: 14px;
-          font-weight: 500;
-          text-decoration: none;
-          border: 1px solid ${border};
-          cursor: pointer;
-          transition: border-color 0.15s, color 0.15s;
-          white-space: nowrap;
-          font-family: inherit;
-        }
-        .lp-btn-outline:hover { border-color: rgba(99,102,241,0.5); color: ${ink}; }
-        .lp-btn-outline:focus-visible { outline: 2px solid ${vLight}; outline-offset: 3px; }
-
-        .lp-feature-card {
-          padding: 24px;
-          border: 1px solid ${border};
-          border-radius: 10px;
-          background: rgba(11,18,40,0.5);
-          transition: border-color 0.2s, background 0.2s;
-        }
-        .lp-feature-card:hover {
-          border-color: rgba(99,102,241,0.38);
-          background: rgba(11,18,40,0.9);
-        }
-
-        .lp-hero-bg {
-          position: absolute;
-          inset: 0;
-          background-image:
-            linear-gradient(rgba(99,102,241,0.05) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(99,102,241,0.05) 1px, transparent 1px);
-          background-size: 60px 60px;
-          pointer-events: none;
-        }
-
-        .lp-glow {
-          position: absolute;
-          width: 720px;
-          height: 720px;
-          border-radius: 50%;
-          background: radial-gradient(circle, rgba(99,102,241,0.14) 0%, transparent 65%);
-          right: -180px;
-          top: 50%;
-          transform: translateY(-50%);
-          pointer-events: none;
-        }
-
-        @keyframes lp-float {
-          0%, 100% { transform: translateY(0); }
-          50%       { transform: translateY(-10px); }
-        }
-        .lp-mockup {
-          animation: lp-float 5s ease-in-out infinite;
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .lp-mockup { animation: none; }
-        }
-
-        @media (max-width: 767px) {
-          .lp-hero-cols  { flex-direction: column !important; }
-          .lp-hero-text  { flex: 1 !important; max-width: 100% !important; }
-          .lp-hero-visual { display: none !important; }
-          .lp-features-grid { grid-template-columns: 1fr !important; }
-          .lp-aizen-cols { flex-direction: column !important; }
-          .lp-nav-links  { display: none !important; }
-          .lp-h1 { font-size: 48px !important; }
-        }
-
-        @media (min-width: 768px) and (max-width: 1023px) {
-          .lp-features-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          .lp-h1 { font-size: 60px !important; }
-        }
-      `}</style>
-
-      {/* ── Nav ──────────────────────────────────────────────────────────────── */}
-      <header style={{
-        position: "sticky",
-        top: 0,
-        zIndex: 50,
-        borderBottom: scrolled ? `1px solid ${border}` : "1px solid transparent",
-        background: scrolled ? "rgba(6,9,26,0.88)" : "transparent",
-        backdropFilter: scrolled ? "blur(14px)" : "none",
-        WebkitBackdropFilter: scrolled ? "blur(14px)" : "none",
-        transition: "background 0.25s, border-color 0.25s",
-      }}>
-        <div style={{
-          maxWidth: 1200, margin: "0 auto", padding: "0 24px",
-          height: 64, display: "flex", alignItems: "center", gap: 32,
-        }}>
-          <a href="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", flexShrink: 0 }}>
-            <img src="/android-chrome-192x192.png" alt="" style={{ width: 26, height: 26, borderRadius: 6 }} />
-            <span style={{ fontWeight: 700, fontSize: 15, color: ink, letterSpacing: "-0.015em" }}>Life Planner</span>
+    <div className="min-h-screen bg-background text-foreground">
+      {/* ── Nav ── */}
+      <header className={cn(
+        "sticky top-0 z-50 border-b transition-colors duration-200",
+        scrolled ? "border-border bg-background/90 backdrop-blur" : "border-transparent",
+      )}>
+        <div className={cn(container, "flex h-16 items-center gap-8")}>
+          <a href="/" className="flex shrink-0 items-center gap-2.5">
+            <img src="/android-chrome-192x192.png" alt="" className="h-7 w-7 rounded-lg dark:invert" />
+            <span className="font-display text-lg font-semibold">Life Planner</span>
           </a>
-
-          <nav className="lp-nav-links" style={{ display: "flex", alignItems: "center", gap: 28 }}>
-            <a href="#features" className="lp-nav-link">Features</a>
-            <a href="#aizen" className="lp-nav-link">AIzen</a>
-            <a href="#open-source" className="lp-nav-link">Open Source</a>
+          <nav aria-label="Sections" className="hidden items-center gap-7 text-sm font-medium text-muted-foreground md:flex">
+            <a href="#how" className="hover:text-foreground">How it works</a>
+            <a href="#features" className="hover:text-foreground">Features</a>
+            <a href="#aizen" className="hover:text-foreground">AIzen</a>
+            <a href="#open-source" className="hover:text-foreground">Open source</a>
           </nav>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginLeft: "auto" }}>
-            <Link to="/login" className="lp-btn-outline" style={{ padding: "8px 16px" }}>Log In</Link>
-            <Link to="/register" className="lp-btn-primary" style={{ padding: "8px 16px" }}>
-              Get Started <ArrowRight size={14} />
-            </Link>
+          <div className="ml-auto flex items-center gap-2">
+            <Button asChild variant="ghost" size="sm"><Link to="/login">Log in</Link></Button>
+            <Button asChild size="sm" className="rounded-full px-4">
+              <Link to="/register">Get started <ArrowRight className="h-4 w-4" aria-hidden /></Link>
+            </Button>
           </div>
         </div>
       </header>
 
-      {/* ── Hero ─────────────────────────────────────────────────────────────── */}
-      <section style={{
-        position: "relative",
-        overflow: "hidden",
-        minHeight: "calc(100vh - 64px)",
-        display: "flex",
-        alignItems: "center",
-      }}>
-        <div className="lp-hero-bg" />
-        <div className="lp-glow" />
-        {/* bottom fade */}
-        <div style={{
-          position: "absolute", bottom: 0, left: 0, right: 0, height: 120,
-          background: `linear-gradient(to bottom, transparent, ${bg})`,
-          pointerEvents: "none",
-        }} />
-
-        <div style={{ position: "relative", zIndex: 1, maxWidth: 1200, margin: "0 auto", padding: "80px 24px", width: "100%" }}>
-          <div className="lp-hero-cols" style={{ display: "flex", alignItems: "center", gap: 56 }}>
-
-            {/* Left: text */}
-            <div className="lp-hero-text" style={{ flex: "0 0 52%", maxWidth: "52%" }}>
-              <div style={{
-                display: "inline-flex", alignItems: "center", gap: 7,
-                border: `1px solid rgba(99,102,241,0.3)`,
-                borderRadius: 20, padding: "5px 12px 5px 9px",
-                background: "rgba(99,102,241,0.07)", marginBottom: 28,
-              }}>
-                <Sparkles size={12} color={vLight} />
-                <span style={{ fontSize: 12, color: vLight, fontWeight: 500, letterSpacing: "0.04em" }}>
-                  AI-Powered Life Planning
-                </span>
-              </div>
-
-              <h1 className="lp-serif lp-h1" style={{
-                fontStyle: "italic",
-                fontSize: 76,
-                fontWeight: 400,
-                lineHeight: 1.07,
-                letterSpacing: "-0.022em",
-                margin: "0 0 24px",
-              }}>
-                <span style={{ color: ink }}>Plan everything.</span>
+      <main>
+        {/* ── Hero ── */}
+        <section className="relative overflow-hidden">
+          <div className={cn(container, "grid items-center gap-12 py-14 md:py-20 lg:grid-cols-[1.1fr_1fr] lg:gap-16")}>
+            <div>
+              <p className="mb-6 inline-flex items-center gap-2 rounded-full bg-primary-soft px-3 py-1 text-xs font-semibold text-primary">
+                <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                Plan · Track · Reflect, with an AI companion
+              </p>
+              <h1 className="font-display text-[44px] font-semibold leading-[1.05] tracking-tight sm:text-6xl lg:text-7xl">
+                Plan everything.
                 <br />
-                <span style={{ color: violet }}>Act on what matters.</span>
+                <span className="italic text-primary">Act on what matters.</span>
               </h1>
-
-              <p style={{
-                fontSize: 18,
-                color: muted,
-                lineHeight: 1.65,
-                maxWidth: 460,
-                margin: "0 0 36px",
-              }}>
-                Life Planner connects your biggest ambitions to tomorrow's task list — with AIzen, your AI companion, turning your plans into consistent daily action.
+              <p className="mt-6 max-w-lg text-lg leading-relaxed text-muted-foreground">
+                Life Planner connects your biggest goals to today's task list. Habits, mood and reading live in the same place,
+                and AIzen helps you turn plans into steady daily action.
               </p>
-
-              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-                <Link to="/register" className="lp-btn-primary" style={{ fontSize: 15, padding: "12px 24px" }}>
-                  Get Started Free <ArrowRight size={16} />
-                </Link>
-                <Link to="/login" className="lp-btn-outline" style={{ fontSize: 15, padding: "12px 24px" }}>
-                  Sign In
-                </Link>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <Button asChild size="lg" className="rounded-full">
+                  <Link to="/register">Start planning free <ArrowRight className="h-4 w-4" aria-hidden /></Link>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="rounded-full">
+                  <Link to="/login">Sign in</Link>
+                </Button>
               </div>
-              <p style={{ fontSize: 13, color: muted, marginTop: 14 }}>Free to use · No credit card required</p>
+              <p className="mt-4 text-sm text-muted-foreground">Free to use · No credit card · English and Türkçe</p>
             </div>
 
-            {/* Right: mockup */}
-            <div className="lp-hero-visual" style={{ flex: 1 }}>
-              <div className="lp-mockup" style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 348, marginLeft: "auto" }}>
-                <PlannerCard />
-                <AizenBubble />
+            <div className="relative mx-auto w-full max-w-sm lg:max-w-md">
+              <div aria-hidden className="absolute -inset-8 -z-10 rounded-[40px] bg-primary-soft/70 blur-2xl" />
+              <TodayMockup />
+              <div className="-mt-6 ml-auto w-[85%] translate-x-2 sm:translate-x-6">
+                <AizenNote />
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ── Features ─────────────────────────────────────────────────────────── */}
-      <section id="features" style={{ padding: "96px 24px" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ marginBottom: 56, maxWidth: 480 }}>
-            <div style={{
-              fontSize: 11, color: violet, fontWeight: 600,
-              letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12,
-            }}>
-              Everything you need
-            </div>
-            <h2 className="lp-serif" style={{
-              fontStyle: "italic", fontSize: 42, fontWeight: 400, color: ink,
-              lineHeight: 1.2, margin: "0 0 14px",
-            }}>
-              Your whole life, in one place
+        {/* ── How it fits together ── */}
+        <section id="how" className="border-y bg-card py-16 md:py-20">
+          <div className={container}>
+            <p className="text-sm font-semibold text-primary">How it works</p>
+            <h2 className="mt-2 max-w-xl font-display text-3xl font-semibold leading-tight md:text-4xl">
+              From the life you want to what you do today
             </h2>
-            <p style={{ fontSize: 16, color: muted, lineHeight: 1.6, margin: 0 }}>
-              One system for every layer of your life — from decade-scale vision to today's to-do list.
-            </p>
+            <ol className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {LADDER.map(({ Icon, label, text }, i) => (
+                <li key={label} className="relative rounded-xl border bg-background p-5">
+                  <span className="absolute right-4 top-4 font-display text-3xl font-semibold text-muted-foreground/25">{i + 1}</span>
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-soft text-primary">
+                    <Icon className="h-5 w-5" aria-hidden />
+                  </span>
+                  <h3 className="mt-4 font-semibold">{label}</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{text}</p>
+                </li>
+              ))}
+            </ol>
           </div>
+        </section>
 
-          <div className="lp-features-grid" style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 14,
-          }}>
-            {features.map(({ Icon, title, desc }) => (
-              <div key={title} className="lp-feature-card">
-                <div style={{
-                  width: 36, height: 36, borderRadius: 8,
-                  background: "rgba(99,102,241,0.1)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  marginBottom: 14,
-                }}>
-                  <Icon size={17} color={vLight} />
+        {/* ── Features ── */}
+        <section id="features" className="py-16 md:py-24">
+          <div className={container}>
+            <p className="text-sm font-semibold text-primary">Features</p>
+            <h2 className="mt-2 max-w-xl font-display text-3xl font-semibold leading-tight md:text-4xl">
+              Small daily rituals, one calm place
+            </h2>
+            <div className="mt-10 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+              {FEATURES.map(({ Icon, title, text }) => (
+                <div key={title}>
+                  <Icon className="h-6 w-6 text-primary" aria-hidden />
+                  <h3 className="mt-3 text-lg font-semibold">{title}</h3>
+                  <p className="mt-1.5 leading-relaxed text-muted-foreground">{text}</p>
                 </div>
-                <h3 style={{ fontSize: 14, fontWeight: 600, color: ink, margin: "0 0 6px", letterSpacing: "-0.01em" }}>
-                  {title}
-                </h3>
-                <p style={{ fontSize: 13, color: muted, lineHeight: 1.55, margin: 0 }}>{desc}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ── AIzen ────────────────────────────────────────────────────────────── */}
-      <section id="aizen" style={{ padding: "96px 24px", background: surf, borderTop: `1px solid ${border}`, borderBottom: `1px solid ${border}` }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div className="lp-aizen-cols" style={{ display: "flex", alignItems: "center", gap: 72 }}>
-
-            {/* Text */}
-            <div style={{ flex: "0 0 42%", maxWidth: "42%" }}>
-              <div style={{
-                fontSize: 11, color: violet, fontWeight: 600,
-                letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 12,
-              }}>
-                Your AI companion
-              </div>
-              <h2 className="lp-serif" style={{
-                fontStyle: "italic", fontSize: 42, fontWeight: 400, color: ink,
-                lineHeight: 1.2, margin: "0 0 18px",
-              }}>
-                Meet AIzen
-              </h2>
-              <p style={{ fontSize: 16, color: muted, lineHeight: 1.65, margin: "0 0 28px" }}>
-                AIzen knows your tasks, goals, habits, and history. Ask it to review your week, suggest priorities, or think through a decision — and it answers from the context of{" "}
-                <em style={{ color: inkDim, fontStyle: "italic" }}>your actual life plan</em>, not generic advice.
+        {/* ── AIzen ── */}
+        <section id="aizen" className="border-y bg-sunken py-16 md:py-24">
+          <div className={cn(container, "grid items-center gap-12 lg:grid-cols-2 lg:gap-16")}>
+            <div>
+              <p className="text-sm font-semibold text-primary">Your AI companion</p>
+              <h2 className="mt-2 font-display text-3xl font-semibold leading-tight md:text-4xl">Meet AIzen</h2>
+              <p className="mt-4 max-w-lg text-lg leading-relaxed text-muted-foreground">
+                AIzen knows your tasks, goals, habits and history. Ask it to review your week, suggest priorities, or think
+                a decision through, and it answers from <em className="font-display text-foreground">your actual plan</em>, not generic advice.
               </p>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+              <ul className="mt-6 space-y-3">
                 {[
                   "Reads your habit streaks and mood history",
                   "Connects daily tasks to your long-range goals",
-                  "Asks the right follow-up questions",
-                  "Stays in context across the whole conversation",
-                ].map((point) => (
-                  <div key={point} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                    <div style={{
-                      width: 18, height: 18, borderRadius: "50%", flexShrink: 0, marginTop: 1,
-                      background: "rgba(99,102,241,0.12)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      <Check size={10} color={vLight} strokeWidth={3} />
-                    </div>
-                    <span style={{ fontSize: 14, color: inkDim, lineHeight: 1.5 }}>{point}</span>
-                  </div>
+                  "Writes a weekly review of how things went",
+                  "Drag any task or goal into the chat to discuss it",
+                ].map((p) => (
+                  <li key={p} className="flex items-start gap-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <Check className="h-3 w-3" strokeWidth={3} aria-hidden />
+                    </span>
+                    <span>{p}</span>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
-
-            {/* Chat mockup */}
-            <div style={{ flex: 1 }}>
-              <div style={{
-                background: "rgba(6,9,26,0.8)",
-                border: `1px solid ${border}`,
-                borderRadius: 14,
-                overflow: "hidden",
-              }}>
-                {/* Header */}
-                <div style={{
-                  padding: "14px 18px",
-                  borderBottom: `1px solid ${border}`,
-                  display: "flex", alignItems: "center", gap: 10,
-                  background: "rgba(11,18,40,0.6)",
-                }}>
-                  <div style={{
-                    width: 32, height: 32, borderRadius: "50%",
-                    background: "rgba(99,102,241,0.18)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    <Sparkles size={15} color={vLight} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: ink }}>AIzen</div>
-                    <div style={{ fontSize: 11, color: muted }}>Your planning companion</div>
-                  </div>
-                  <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80" }} />
-                    <span style={{ fontSize: 11, color: muted }}>online</span>
-                  </div>
-                </div>
-
-                {/* Messages */}
-                <div style={{ padding: "20px 18px", display: "flex", flexDirection: "column", gap: 14 }}>
-                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                    <div style={{
-                      background: "rgba(99,102,241,0.18)",
-                      border: `1px solid rgba(99,102,241,0.28)`,
-                      borderRadius: "10px 10px 2px 10px",
-                      padding: "10px 14px",
-                      maxWidth: "80%",
-                      fontSize: 14, color: inkDim, lineHeight: 1.5,
-                    }}>
-                      What should I focus on this week?
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <div style={{
-                      width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
-                      background: "rgba(99,102,241,0.14)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      <Sparkles size={12} color={vLight} />
-                    </div>
-                    <div style={{
-                      background: "rgba(11,18,40,0.9)",
-                      border: `1px solid ${border}`,
-                      borderRadius: "2px 10px 10px 10px",
-                      padding: "10px 14px",
-                      fontSize: 14, color: inkDim, lineHeight: 1.6,
-                    }}>
-                      Your gym habit dropped to 2/7 last week, and "Deep Work" has been on your reading list for 12 days. Wednesday evening is open — lock in gym Wed & Fri, and use Thursday 2pm for focused reading. Want me to add those?
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                    <div style={{
-                      background: "rgba(99,102,241,0.18)",
-                      border: `1px solid rgba(99,102,241,0.28)`,
-                      borderRadius: "10px 10px 2px 10px",
-                      padding: "10px 14px",
-                      fontSize: 14, color: inkDim, lineHeight: 1.5,
-                    }}>
-                      Yes, add them.
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                    <div style={{
-                      width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
-                      background: "rgba(99,102,241,0.14)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      <Sparkles size={12} color={vLight} />
-                    </div>
-                    <div style={{
-                      background: "rgba(11,18,40,0.9)",
-                      border: `1px solid ${border}`,
-                      borderRadius: "2px 10px 10px 10px",
-                      padding: "10px 14px",
-                      fontSize: 14, color: inkDim, lineHeight: 1.6,
-                    }}>
-                      Done. Gym added Wed & Fri at 6pm, reading time Thu 2–4pm. That's 6 hours of deep work scheduled this week.
-                    </div>
-                  </div>
-
-                  {/* Input bar */}
-                  <div style={{
-                    marginTop: 2,
-                    border: `1px solid rgba(99,102,241,0.18)`,
-                    borderRadius: 8,
-                    padding: "10px 14px",
-                    fontSize: 14, color: "rgba(107,116,153,0.7)",
-                    background: "rgba(11,18,40,0.5)",
-                    cursor: "text",
-                  }}>
-                    Ask AIzen anything about your plans…
-                  </div>
-                </div>
-              </div>
-            </div>
+            <ChatMockup />
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ── Open Source ──────────────────────────────────────────────────────── */}
-      <section id="open-source" style={{ padding: "80px 24px" }}>
-        <div style={{ maxWidth: 560, margin: "0 auto", textAlign: "center" }}>
-          <div style={{
-            width: 46, height: 46, borderRadius: 10,
-            background: "rgba(99,102,241,0.08)",
-            border: `1px solid ${border}`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            margin: "0 auto 20px",
-          }}>
-            <Github size={20} color={vLight} />
-          </div>
-          <h2 className="lp-serif" style={{
-            fontStyle: "italic", fontSize: 36, fontWeight: 400, color: ink,
-            lineHeight: 1.25, margin: "0 0 14px",
-          }}>
-            Free and open source
-          </h2>
-          <p style={{ fontSize: 16, color: muted, lineHeight: 1.65, margin: "0 0 28px" }}>
-            Life Planner is free to use and the source is open on GitHub. Self-host it on your own server, fork it, or contribute a feature.
-          </p>
-          <a
-            href="https://github.com/hilalsay/LifePlanner"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="lp-btn-outline"
-          >
-            <Github size={15} />
-            View on GitHub
-          </a>
-        </div>
-      </section>
-
-      {/* ── CTA ──────────────────────────────────────────────────────────────── */}
-      <section style={{
-        padding: "80px 24px",
-        background: "linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(99,102,241,0.04) 100%)",
-        borderTop: `1px solid ${border}`,
-        borderBottom: `1px solid ${border}`,
-      }}>
-        <div style={{ maxWidth: 520, margin: "0 auto", textAlign: "center" }}>
-          <h2 className="lp-serif" style={{
-            fontStyle: "italic", fontSize: 46, fontWeight: 400, color: ink,
-            lineHeight: 1.15, margin: "0 0 14px",
-          }}>
-            Start planning today.
-          </h2>
-          <p style={{ fontSize: 17, color: muted, margin: "0 0 32px", lineHeight: 1.6 }}>
-            Your goals deserve a system that actually works.
-          </p>
-          <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
-            <Link to="/register" className="lp-btn-primary" style={{ fontSize: 16, padding: "13px 28px" }}>
-              Get Started Free <ArrowRight size={16} />
-            </Link>
-            <Link to="/login" className="lp-btn-outline" style={{ fontSize: 16, padding: "13px 28px" }}>
-              Sign In
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Footer ───────────────────────────────────────────────────────────── */}
-      <footer style={{ padding: "28px 24px" }}>
-        <div style={{
-          maxWidth: 1200, margin: "0 auto",
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          flexWrap: "wrap", gap: 16,
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <img src="/android-chrome-192x192.png" alt="" style={{ width: 18, height: 18, borderRadius: 4, opacity: 0.7 }} />
-            <span style={{ fontSize: 13, color: muted }}>
-              © {new Date().getFullYear()} Life Planner
+        {/* ── Open source ── */}
+        <section id="open-source" className="py-16 md:py-20">
+          <div className={cn(container, "max-w-xl text-center")}>
+            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border bg-card">
+              <Github className="h-5 w-5" aria-hidden />
             </span>
+            <h2 className="mt-5 font-display text-3xl font-semibold">Free and open source</h2>
+            <p className="mt-3 leading-relaxed text-muted-foreground">
+              Life Planner is free to use and the code is on GitHub. Host it yourself, fork it, or contribute a feature.
+            </p>
+            <Button asChild variant="outline" className="mt-6 rounded-full">
+              <a href="https://github.com/hilalsay/LifePlanner" target="_blank" rel="noopener noreferrer">
+                <Github className="h-4 w-4" aria-hidden />View on GitHub
+              </a>
+            </Button>
           </div>
-          <div style={{ display: "flex", gap: 24 }}>
-            {[
-              { label: "GitHub", href: "https://github.com/hilalsay/LifePlanner", external: true },
-              { label: "Sign In", href: "/login", external: false },
-              { label: "Register", href: "/register", external: false },
-            ].map(({ label, href, external }) =>
-              external ? (
-                <a
-                  key={label}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ fontSize: 13, color: muted, textDecoration: "none", transition: "color 0.15s" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = ink)}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = muted)}
-                >
-                  {label}
-                </a>
-              ) : (
-                <Link
-                  key={label}
-                  to={href}
-                  style={{ fontSize: 13, color: muted, textDecoration: "none", transition: "color 0.15s" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = ink)}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = muted)}
-                >
-                  {label}
-                </Link>
-              )
-            )}
+        </section>
+
+        {/* ── CTA ── */}
+        <section className={cn(container, "pb-16 md:pb-24")}>
+          <div className="rounded-3xl bg-primary px-6 py-14 text-center text-primary-foreground md:py-16">
+            <h2 className="font-display text-4xl font-semibold leading-tight md:text-5xl">Start planning today.</h2>
+            <p className="mx-auto mt-3 max-w-md text-lg opacity-85">Your goals deserve a system you'll actually open every morning.</p>
+            <Button asChild size="lg" variant="secondary" className="mt-8 rounded-full">
+              <Link to="/register">Create your free account <ArrowRight className="h-4 w-4" aria-hidden /></Link>
+            </Button>
           </div>
+        </section>
+      </main>
+
+      {/* ── Footer ── */}
+      <footer className="border-t">
+        <div className={cn(container, "flex flex-wrap items-center justify-between gap-4 py-6 text-sm text-muted-foreground")}>
+          <span className="flex items-center gap-2">
+            <img src="/android-chrome-192x192.png" alt="" className="h-5 w-5 rounded dark:invert" />
+            © {new Date().getFullYear()} Life Planner
+          </span>
+          <nav aria-label="Footer" className="flex gap-6">
+            <a href="https://github.com/hilalsay/LifePlanner" target="_blank" rel="noopener noreferrer" className="hover:text-foreground">GitHub</a>
+            <Link to="/login" className="hover:text-foreground">Sign in</Link>
+            <Link to="/register" className="hover:text-foreground">Register</Link>
+          </nav>
         </div>
       </footer>
     </div>
