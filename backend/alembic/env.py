@@ -8,10 +8,13 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Override URL from environment if set
-db_url = os.getenv("DATABASE_URL")
-if db_url:
-    config.set_main_option("sqlalchemy.url", db_url)
+# Use the same DB URL as the app: DATABASE_URL env var, else backend/.env
+# (via app settings). systemd runs `alembic upgrade head` without loading .env,
+# so never rely on the placeholder in alembic.ini.
+from app.config import settings  # noqa: E402
+
+db_url = os.getenv("DATABASE_URL") or settings.database_url
+config.set_main_option("sqlalchemy.url", db_url.replace("%", "%%"))
 
 from app.models import Base  # noqa: E402
 target_metadata = Base.metadata
