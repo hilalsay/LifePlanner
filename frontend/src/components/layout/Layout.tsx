@@ -8,7 +8,7 @@ import { AssistantPanel } from "@/components/chat/AssistantPanel";
 import { useI18n } from "@/contexts/LanguageContext";
 
 const TITLE_PATHS = new Set([
-  "/today", "/week", "/month", "/year", "/vision", "/habits", "/tracking", "/overview", "/settings",
+  "/today", "/week", "/month", "/vision", "/habits", "/reading", "/settings",
 ]);
 
 export function Layout() {

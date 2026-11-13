@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import {
   format,
   getDaysInMonth,
@@ -9,8 +10,9 @@ import {
   addMonths,
   subMonths,
 } from "date-fns";
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle } from "lucide-react";
+import { ArrowRight, CheckCircle2, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SkeletonRows } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { planningApi, trackingApi, type DailyTask, type MoodEntry, type HealthEntry } from "@/lib/api";
@@ -91,10 +93,13 @@ function buildCells(month: Date): Cell[] {
   return cells;
 }
 
-export function CalendarOverview() {
+/**
+ * Month calendar with mood tints; tapping a day shows that day's tasks, mood
+ * and health, with a link to open it in Today. (Formerly the Overview page.)
+ */
+export function MonthCalendar({ month }: { month: Date }) {
   const { t, lang } = useI18n();
   const locale = dateLocale(lang);
-  const [month, setMonth] = useState(new Date());
   const [moodMap, setMoodMap] = useState<Record<string, MoodEntry>>({});
 
   const [selectedDate, setSelectedDate] = useState<string | null>(() => toDateString(new Date()));
@@ -152,18 +157,7 @@ export function CalendarOverview() {
   const cells = buildCells(month);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4">
-      {/* month navigation */}
-      <div className="flex items-center justify-between">
-        <Button aria-label={t("common.prev")} variant="outline" size="sm" onClick={() => setMonth((m) => subMonths(m, 1))}>
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <h2 className="font-semibold">{format(month, "MMMM yyyy", { locale })}</h2>
-        <Button aria-label={t("common.next")} variant="outline" size="sm" onClick={() => setMonth((m) => addMonths(m, 1))}>
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
-
+    <div className="space-y-4">
       {/* calendar grid */}
       <div className="overflow-hidden rounded-xl border">
         <div className="grid grid-cols-7 border-b bg-muted/30">
@@ -183,7 +177,9 @@ export function CalendarOverview() {
               <button
                 key={dateStr}
                 onClick={() => selectDay(dateStr)}
-                className={`flex flex-col items-center gap-0.5 border-b border-r py-1.5 transition-colors hover:bg-accent focus:outline-none last:border-r-0 ${moodBg} ${
+                aria-label={format(new Date(dateStr + "T00:00:00"), "PPPP", { locale })}
+                aria-pressed={isSelected}
+                className={`flex min-h-[44px] flex-col items-center gap-0.5 border-b border-r py-1.5 transition-colors hover:bg-accent last:border-r-0 ${moodBg} ${
                   isSelected
                     ? `ring-1 ring-inset ring-primary ${moodBg ? "" : "bg-primary/10"}`
                     : ""
@@ -220,16 +216,24 @@ export function CalendarOverview() {
       {selectedDate && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">
-              {format(new Date(selectedDate + "T00:00:00"), "EEEE, MMMM d", { locale })}
-              {selectedDate === today && (
-                <span className="ml-2 text-xs font-normal text-muted-foreground">{t("common.today")}</span>
-              )}
-            </CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-base">
+                {format(new Date(selectedDate + "T00:00:00"), "EEEE, MMMM d", { locale })}
+                {selectedDate === today && (
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">{t("common.today")}</span>
+                )}
+              </CardTitle>
+              <Button asChild variant="outline" size="sm">
+                <Link to={selectedDate === today ? "/today" : `/today?date=${selectedDate}`}>
+                  {t("month.openDay")}
+                  <ArrowRight className="h-4 w-4" aria-hidden />
+                </Link>
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {loadingDay ? (
-              <p className="text-sm text-muted-foreground">{t("day.loading")}</p>
+              <SkeletonRows rows={3} label={t("day.loading")} />
             ) : (
               <div className="space-y-5">
 

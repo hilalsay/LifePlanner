@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Plus, Check, Trash2, ChevronLeft, ChevronRight, ChevronDown,
-  GripVertical, Pencil, X, Clock, Sun, PartyPopper,
+  GripVertical, Pencil, X, Clock, Sun, PartyPopper, CalendarDays, Flag,
 } from "lucide-react";
 import { format, addDays, subDays, isToday, differenceInMinutes, differenceInCalendarDays, parseISO, type Locale } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,10 @@ import { SkeletonRows } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/state";
 import { inputClass } from "@/components/ui/input";
 import { MotivationalBanner } from "@/components/MotivationalBanner";
+import { HabitsStrip } from "@/components/today/HabitsStrip";
+import { CheckInCard } from "@/components/today/CheckInCard";
+import { RolloverBanner } from "@/components/today/RolloverBanner";
+import { parseQuickAdd } from "@/lib/quickParse";
 import { planningApi, type DailyTask } from "@/lib/api";
 import { cn, toDateString } from "@/lib/utils";
 import { setChatDragItem } from "@/lib/dragItem";
@@ -217,7 +222,7 @@ function DeadlineBadge({ task, onClick }: { task: DailyTask; onClick?: () => voi
 // ── Undo toast ────────────────────────────────────────────────────────────────
 
 function UndoToast({ message, actionLabel, onAction, onDismiss }: {
-  message: string; actionLabel: string; onAction: () => void; onDismiss: () => void;
+  message: string; actionLabel?: string; onAction?: () => void; onDismiss: () => void;
 }) {
   useEffect(() => {
     const id = window.setTimeout(onDismiss, 6000);
@@ -229,9 +234,11 @@ function UndoToast({ message, actionLabel, onAction, onDismiss }: {
       className="fixed inset-x-4 bottom-20 z-[70] mx-auto flex max-w-sm animate-fade-in items-center gap-3 rounded-xl bg-foreground px-4 py-3 text-sm text-background shadow-lg md:bottom-6"
     >
       <span className="flex-1">{message}</span>
-      <button onClick={onAction} className="rounded-md px-2 py-1 font-semibold text-primary-soft underline-offset-4 hover:underline">
-        {actionLabel}
-      </button>
+      {onAction && (
+        <button onClick={onAction} className="rounded-md px-2 py-1 font-semibold text-primary-soft underline-offset-4 hover:underline">
+          {actionLabel}
+        </button>
+      )}
     </div>
   );
 }
@@ -241,7 +248,12 @@ function UndoToast({ message, actionLabel, onAction, onDismiss }: {
 export function DayView() {
   const { t, lang } = useI18n();
   const locale = dateLocale(lang);
-  const [date, setDate]   = useState(new Date());
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [date, setDate]   = useState(() => {
+    const q = searchParams.get("date");
+    return q && /^\d{4}-\d{2}-\d{2}$/.test(q) ? parseISO(q) : new Date();
+  });
+  const [notice, setNotice] = useState<string | null>(null);
   const [tasks, setTasks] = useState<DailyTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -274,6 +286,18 @@ export function DayView() {
 
   const dateStr = toDateString(date);
   const viewingToday = isToday(date);
+  const todayStr = toDateString(new Date());
+
+  // Keep ?date= in the URL so a day can be linked to (Week/Month) and reloaded.
+  useEffect(() => {
+    const current = searchParams.get("date");
+    const want = viewingToday ? null : dateStr;
+    if (current !== want) setSearchParams(want ? { date: want } : {}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateStr]);
+
+  const parsed = useMemo(() => parseQuickAdd(newTitle), [newTitle]);
+  const hasParsed = !!(parsed.date || parsed.time || parsed.priority) && parsed.title !== newTitle.trim();
 
   useEffect(() => {
     let cancelled = false;
@@ -324,14 +348,23 @@ export function DayView() {
     if (!newTitle.trim() || adding) return;
     setAdding(true);
     try {
+      // Typed shortcuts ("tomorrow 10am !high") fill in what the pickers didn't.
+      const p = parseQuickAdd(newTitle);
+      const taskDate = p.date ?? dateStr;
+      const dlTime = newDlTime || p.time;
+      const dlDate = newDlDate || (dlTime ? taskDate : "");
       const task = await planningApi.createDailyTask({
-        title: newTitle.trim(),
-        task_date: dateStr,
-        priority: "medium",
-        deadline_date: newDlDate || undefined,
-        deadline_time: newDlTime ? newDlTime + ":00" : undefined,
+        title: p.title,
+        task_date: taskDate,
+        priority: p.priority ?? "medium",
+        deadline_date: dlDate || undefined,
+        deadline_time: dlTime ? dlTime + ":00" : undefined,
       });
-      setTasks((prev) => { const next = [...prev, task]; persistOrder(next, dateStr); return next; });
+      if (task.task_date === dateStr) {
+        setTasks((prev) => { const next = [...prev, task]; persistOrder(next, dateStr); return next; });
+      } else {
+        setNotice(t("today.addedTo", { date: format(parseISO(task.task_date), "EEEE d MMM", { locale }) }));
+      }
       setNewTitle("");
       setNewDlDate("");
       setNewDlTime("");
@@ -377,6 +410,7 @@ export function DayView() {
     if (restored.task_date === dateStr) setTasks((prev) => [...prev, restored]);
   });
   const dismissUndo = useCallback(() => setLastDeleted(null), []);
+  const dismissNotice = useCallback(() => setNotice(null), []);
 
   useEffect(() => { if (editingId) editInputRef.current?.focus(); }, [editingId]);
 
@@ -615,7 +649,8 @@ export function DayView() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5">
+    <div className="mx-auto grid max-w-5xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+    <div className="min-w-0 space-y-5">
       {/* Date header: the day is the anchor of this screen */}
       <header className="flex items-end justify-between gap-3">
         <div className="min-w-0">
@@ -666,6 +701,17 @@ export function DayView() {
         </div>
       )}
 
+      {viewingToday && (
+        <RolloverBanner
+          todayStr={todayStr}
+          onMoved={(moved) => setTasks((prev) => {
+            const next = [...prev, ...moved.filter((m) => !prev.some((p) => p.id === m.id))];
+            persistOrder(next, dateStr);
+            return next;
+          })}
+        />
+      )}
+
       {/* Quick add: the primary action, always at the top */}
       <Card className="p-2 shadow-sm">
         <form
@@ -700,6 +746,28 @@ export function DayView() {
             {t("common.add")}
           </Button>
         </form>
+        {hasParsed && (
+          <div aria-live="polite" className="flex flex-wrap items-center gap-1.5 px-2 pb-1 pt-2 text-xs">
+            <span className="text-muted-foreground">{t("today.willAdd")}</span>
+            <span className="font-semibold">“{parsed.title}”</span>
+            {parsed.date && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-info-soft px-2 py-0.5 font-semibold text-info">
+                <CalendarDays className="h-3 w-3" aria-hidden />
+                {format(parseISO(parsed.date), "EEE d MMM", { locale })}
+              </span>
+            )}
+            {parsed.time && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-warning-soft px-2 py-0.5 font-semibold text-warning">
+                <Clock className="h-3 w-3" aria-hidden />{parsed.time}
+              </span>
+            )}
+            {parsed.priority && (
+              <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold", PRIORITY_STYLE[parsed.priority])}>
+                <Flag className="h-3 w-3" aria-hidden />{t(`day.priority.${parsed.priority}`)}
+              </span>
+            )}
+          </div>
+        )}
         {(showDlPicker || newDlDate || newDlTime) && (
           <div className="space-y-1.5 border-t px-2 pb-1 pt-3 mt-2">
             <DeadlinePicker
@@ -738,7 +806,7 @@ export function DayView() {
             icon={Sun}
             title={t("day.emptyTitle")}
             hint={t("day.emptyHint")}
-            action={<Button variant="outline" size="sm" onClick={() => addInputRef.current?.focus()}><Plus className="h-4 w-4" aria-hidden />{t("day.addPlaceholder").replace(/\.+$/, "")}</Button>}
+            action={<Button variant="outline" size="sm" onClick={() => addInputRef.current?.focus()}><Plus className="h-4 w-4" aria-hidden />{t("day.newTaskLabel")}</Button>}
           />
         ) : (
           <>
@@ -769,7 +837,16 @@ export function DayView() {
         )}
       </section>
 
-      <MotivationalBanner />
+    </div>
+
+      {/* Side column: daily rituals (below the tasks on phones) */}
+      <aside className="space-y-5">
+        <HabitsStrip dateStr={dateStr} />
+        <CheckInCard dateStr={dateStr} />
+        <MotivationalBanner />
+      </aside>
+
+      {notice && <UndoToast message={notice} onDismiss={dismissNotice} />}
 
       {lastDeleted && (
         <UndoToast

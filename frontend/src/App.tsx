@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { PreferencesProvider } from "@/contexts/PreferencesContext";
@@ -11,11 +11,9 @@ import { RegisterPage } from "@/pages/RegisterPage";
 import { DayView } from "@/pages/DayView";
 import { WeekView } from "@/pages/WeekView";
 import { MonthView } from "@/pages/MonthView";
-import { YearView } from "@/pages/YearView";
 import { VisionBoard } from "@/pages/VisionBoard";
 import { HabitTracker } from "@/pages/HabitTracker";
-import { TrackingPage } from "@/pages/TrackingPage";
-import { CalendarOverview } from "@/pages/CalendarOverview";
+import { ReadingPage } from "@/pages/ReadingPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 
 export default function App() {
@@ -34,11 +32,13 @@ export default function App() {
               <Route path="/today" element={<DayView />} />
               <Route path="/week" element={<WeekView />} />
               <Route path="/month" element={<MonthView />} />
-              <Route path="/year" element={<YearView />} />
               <Route path="/vision" element={<VisionBoard />} />
               <Route path="/habits" element={<HabitTracker />} />
-              <Route path="/tracking" element={<TrackingPage />} />
-              <Route path="/overview" element={<CalendarOverview />} />
+              <Route path="/reading" element={<ReadingPage />} />
+              {/* Merged pages: keep old links and bookmarks working */}
+              <Route path="/year" element={<Navigate to="/vision" replace />} />
+              <Route path="/overview" element={<Navigate to="/month" replace />} />
+              <Route path="/tracking" element={<Navigate to="/reading" replace />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
           </Route>

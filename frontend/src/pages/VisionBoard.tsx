@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Target, Pencil, Trash2, Check, X, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X, ChevronRight, ChevronLeft, CircleCheck, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,17 +20,16 @@ export function VisionBoard() {
   const [detailGoal, setDetailGoal] = useState<YearlyGoal | null>(null);
   const goalEditRef = useRef<HTMLInputElement>(null);
 
-  const year = new Date().getFullYear();
+  const thisYear = new Date().getFullYear();
+  const [year, setYear] = useState(thisYear);
 
   useEffect(() => {
-    Promise.all([
-      planningApi.getLifeAreas(),
-      planningApi.getYearlyGoals(year),
-    ]).then(([a, g]) => {
-      setAreas(a);
-      setGoals(g);
-    }).catch(console.error);
+    planningApi.getLifeAreas().then(setAreas).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    planningApi.getYearlyGoals(year).then(setGoals).catch(console.error);
+  }, [year]);
 
   useEffect(() => {
     if (editingGoalId) goalEditRef.current?.focus();
@@ -73,6 +72,12 @@ export function VisionBoard() {
     setEditingGoalId(null);
   };
 
+  // One-tap done/undone (carried over from the old Year page).
+  const toggleGoalDone = async (g: YearlyGoal) => {
+    const updated = await planningApi.updateYearlyGoal(g.id, { status: g.status === "completed" ? "active" : "completed" });
+    setGoals((gs) => gs.map((x) => (x.id === g.id ? updated : x)));
+  };
+
   const deleteGoal = async (id: string) => {
     await planningApi.deleteYearlyGoal(id);
     setGoals((gs) => gs.filter((g) => g.id !== id));
@@ -100,9 +105,19 @@ export function VisionBoard() {
   return (
     <>
       <div className="mx-auto max-w-4xl space-y-6">
-        <div className="flex items-center gap-2">
-          <Target className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-semibold">{t("vision.title", { year })}</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-display text-2xl font-semibold">{t("vision.title", { year })}</h2>
+          <div className="flex items-center gap-1">
+            {year !== thisYear && (
+              <Button variant="outline" size="sm" onClick={() => setYear(thisYear)}>{thisYear}</Button>
+            )}
+            <Button variant="outline" size="icon" aria-label={t("common.prev")} onClick={() => setYear((y) => y - 1)}>
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+            </Button>
+            <Button variant="outline" size="icon" aria-label={t("common.next")} onClick={() => setYear((y) => y + 1)}>
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -163,11 +178,20 @@ export function VisionBoard() {
             {visibleGoals.map((g) => {
               const area = areas.find((a) => a.id === g.life_area_id);
               return (
-                <div key={g.id} className="group flex items-center gap-3 rounded-md border px-3 py-2">
-                  <div
-                    className="h-2 w-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: area?.color ?? "#94a3b8" }}
-                  />
+                <div key={g.id} className="group flex items-center gap-3 rounded-lg border px-3 py-2">
+                  <button
+                    type="button"
+                    role="checkbox"
+                    aria-checked={g.status === "completed"}
+                    aria-label={g.title}
+                    onClick={() => toggleGoalDone(g)}
+                    className="-m-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                    style={{ color: area?.color }}
+                  >
+                    {g.status === "completed"
+                      ? <CircleCheck className="h-5 w-5" aria-hidden />
+                      : <Circle className="h-5 w-5 text-muted-foreground/60" aria-hidden />}
+                  </button>
 
                   {editingGoalId === g.id ? (
                     <div className="flex flex-1 items-center gap-2">
@@ -192,7 +216,7 @@ export function VisionBoard() {
                   ) : (
                     <>
                       <div className="flex-1 min-w-0">
-                        <span className="text-sm">{g.title}</span>
+                        <span className={g.status === "completed" ? "text-sm text-muted-foreground line-through" : "text-sm"}>{g.title}</span>
                         {g.description && (
                           <p className="text-xs text-muted-foreground truncate mt-0.5">{g.description}</p>
                         )}

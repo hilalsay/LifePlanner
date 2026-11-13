@@ -1,5 +1,5 @@
 import {
-  CalendarDays, CalendarRange, Calendar, LayoutGrid, Target, Flame, BarChart3, CalendarCheck2,
+  CalendarDays, CalendarRange, Calendar, Target, Flame, BookOpen,
   type LucideIcon,
 } from "lucide-react";
 
@@ -13,7 +13,6 @@ export const NAV_GROUPS: { key: string; items: NavItem[] }[] = [
       { to: "/today", icon: CalendarDays, key: "nav.today" },
       { to: "/week", icon: CalendarRange, key: "nav.week" },
       { to: "/month", icon: Calendar, key: "nav.month" },
-      { to: "/year", icon: LayoutGrid, key: "nav.year" },
       { to: "/vision", icon: Target, key: "nav.vision" },
     ],
   },
@@ -21,12 +20,11 @@ export const NAV_GROUPS: { key: string; items: NavItem[] }[] = [
     key: "nav.groupTrack",
     items: [
       { to: "/habits", icon: Flame, key: "nav.habits" },
-      { to: "/tracking", icon: BarChart3, key: "nav.tracking" },
-      { to: "/overview", icon: CalendarCheck2, key: "nav.overview" },
+      { to: "/reading", icon: BookOpen, key: "nav.reading" },
     ],
   },
 ];
 
 /** The five most-used destinations, shown in the phone bottom bar. */
-export const BOTTOM_NAV = ["/today", "/week", "/month", "/habits", "/tracking"]
+export const BOTTOM_NAV = ["/today", "/week", "/month", "/habits", "/vision"]
   .map((to) => NAV_GROUPS.flatMap((g) => g.items).find((i) => i.to === to)!);

@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
-import { Plus, Check, Clock, X, Loader2, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Plus, Check, Clock, X, Loader2, Sparkles, CalendarPlus } from "lucide-react";
 import { format, startOfWeek, addWeeks, subWeeks, addDays, differenceInCalendarDays, parseISO, type Locale } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { planningApi, aiApi, type WeeklyPriority, type WeeklyAIReview } from "@/lib/api";
+import { planningApi, aiApi, type WeeklyPriority, type WeeklyAIReview, type DailyTask } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import { getISOWeek, toDateString } from "@/lib/utils";
 import { setChatDragItem } from "@/lib/dragItem";
 import { useI18n } from "@/contexts/LanguageContext";
@@ -115,6 +117,35 @@ export function WeekView() {
     planningApi.getWeeklyPriorities(year, week).then(setPriorities).catch(console.error);
   }, [year, week]);
 
+  // Task counts per day for the day strip.
+  const [dayTasks, setDayTasks] = useState<Record<string, DailyTask[]>>({});
+  const [addedToToday, setAddedToToday] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all(days.map((d) => planningApi.getDailyTasks(toDateString(d)).catch(() => [] as DailyTask[])))
+      .then((lists) => {
+        if (cancelled) return;
+        const map: Record<string, DailyTask[]> = {};
+        days.forEach((d, i) => { map[toDateString(d)] = lists[i]; });
+        setDayTasks(map);
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toDateString(weekStart)]);
+
+  /** Turn a weekly priority into a task on today's list, linked to it. */
+  const addToToday = async (p: WeeklyPriority) => {
+    const task = await planningApi.createDailyTask({
+      title: p.title,
+      task_date: toDateString(new Date()),
+      priority: "high",
+      weekly_priority_id: p.id,
+    });
+    setDayTasks((m) => ({ ...m, [task.task_date]: [...(m[task.task_date] ?? []), task] }));
+    setAddedToToday(p.id);
+    window.setTimeout(() => setAddedToToday((id) => (id === p.id ? null : id)), 2500);
+  };
+
   // Past days in the current week jump to next week's same day.
   // Past days in other weeks are kept as-is (allow setting historical deadlines).
   const currentWeekStart = startOfWeek(today, { weekStartsOn: 1 });
@@ -213,18 +244,28 @@ export function WeekView() {
         {days.map((day) => {
           const ds = toDateString(day);
           const isToday = ds === toDateString(today);
+          const list = dayTasks[ds] ?? [];
+          const done = list.filter((x) => x.is_completed).length;
           return (
-            <div
+            <Link
               key={ds}
-              className={`rounded-md border p-2 text-center text-xs ${
-                isToday
-                  ? "border-primary bg-primary/5 font-semibold text-primary"
-                  : "text-muted-foreground"
-              }`}
+              to={isToday ? "/today" : `/today?date=${ds}`}
+              aria-label={`${format(day, "EEEE d MMMM", { locale })}: ${t("common.doneCount", { done, total: list.length })}`}
+              className={cn(
+                "flex flex-col items-center rounded-lg border px-1 py-2 text-xs transition-colors hover:border-primary/50 hover:bg-accent",
+                isToday ? "border-primary bg-primary-soft font-semibold text-primary" : "bg-card text-muted-foreground",
+              )}
             >
-              <p>{format(day, "EEE", { locale })}</p>
-              <p className="text-base font-medium">{format(day, "d", { locale })}</p>
-            </div>
+              <span>{format(day, "EEE", { locale })}</span>
+              <span className="text-base font-semibold text-foreground">{format(day, "d", { locale })}</span>
+              <span className="mt-1 h-4 tabular-nums">
+                {list.length > 0 && (
+                  <span className={cn("rounded-full px-1.5 text-[11px] font-semibold", done === list.length ? "bg-success-soft text-success" : "bg-secondary text-secondary-foreground")}>
+                    {done}/{list.length}
+                  </span>
+                )}
+              </span>
+            </Link>
           );
         })}
       </div>
@@ -293,6 +334,25 @@ export function WeekView() {
                       <Clock className="h-3 w-3" />
                       {dlInfo.text}
                     </button>
+                  )}
+
+                  {!p.is_completed && (
+                    addedToToday === p.id ? (
+                      <span role="status" className="flex items-center gap-1 text-xs font-semibold text-success">
+                        <Check className="h-3.5 w-3.5" aria-hidden />
+                        {t("week.addedToToday")}
+                      </span>
+                    ) : (
+                      <Button
+                        size="icon-sm"
+                        variant="subtle"
+                        onClick={() => addToToday(p)}
+                        aria-label={t("week.addToToday")}
+                        title={t("week.addToToday")}
+                      >
+                        <CalendarPlus className="h-4 w-4" aria-hidden />
+                      </Button>
+                    )
                   )}
 
                   {/* Ghost clock — shown on hover when no deadline */}

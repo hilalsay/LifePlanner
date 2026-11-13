@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
-import { Plus, Clock, X, ChevronRight } from "lucide-react";
+import { Plus, Clock, X, ChevronRight, ChevronLeft } from "lucide-react";
 import {
-  format, getDaysInMonth, startOfMonth, getDay, startOfWeek, addDays,
-  addMonths, subMonths, differenceInCalendarDays, parseISO,
+  format, addMonths, subMonths, isSameMonth, differenceInCalendarDays, parseISO,
   lastDayOfMonth, setDate, type Locale,
 } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MonthlyFocusDetail } from "@/components/MonthlyFocusDetail";
+import { MonthCalendar } from "@/components/MonthCalendar";
 import { planningApi, type MonthlyFocus } from "@/lib/api";
 import { toDateString } from "@/lib/utils";
 import { useI18n } from "@/contexts/LanguageContext";
@@ -54,10 +54,6 @@ export function MonthView() {
     planningApi.getMonthlyFocuses(year, monthNum).then(setFocuses).catch(console.error);
   }, [year, monthNum]);
 
-  const daysInMonth    = getDaysInMonth(month);
-  const firstDayOffset = (getDay(startOfMonth(month)) + 6) % 7; // Mon=0
-  const weekStart      = startOfWeek(month, { weekStartsOn: 1 });
-  const weekdays       = Array.from({ length: 7 }, (_, i) => format(addDays(weekStart, i), "EEE", { locale }));
 
   // Quick deadline options for this month
   const eom        = toDateString(lastDayOfMonth(month));
@@ -143,43 +139,27 @@ export function MonthView() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
+    <div className="mx-auto max-w-5xl space-y-5">
       {/* Month navigation */}
-      <div className="flex items-center justify-between">
-        <Button variant="outline" size="sm" onClick={() => setMonth((m) => subMonths(m, 1))}>{t("common.prev")}</Button>
-        <h2 className="font-semibold">{format(month, "MMMM yyyy", { locale })}</h2>
-        <Button variant="outline" size="sm" onClick={() => setMonth((m) => addMonths(m, 1))}>{t("common.next")}</Button>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-display text-2xl font-semibold capitalize">{format(month, "MMMM yyyy", { locale })}</h2>
+        <div className="flex items-center gap-1">
+          {!isSameMonth(month, today) && (
+            <Button variant="outline" size="sm" onClick={() => setMonth(new Date())}>{t("month.thisMonth")}</Button>
+          )}
+          <Button variant="outline" size="icon" aria-label={t("common.prev")} onClick={() => setMonth((m) => subMonths(m, 1))}>
+            <ChevronLeft className="h-4 w-4" aria-hidden />
+          </Button>
+          <Button variant="outline" size="icon" aria-label={t("common.next")} onClick={() => setMonth((m) => addMonths(m, 1))}>
+            <ChevronRight className="h-4 w-4" aria-hidden />
+          </Button>
+        </div>
       </div>
 
-      {/* Calendar grid */}
-      <div className="rounded-xl border">
-        <div className="grid grid-cols-7 border-b">
-          {weekdays.map((d, i) => (
-            <div key={i} className="py-2 text-center text-xs font-medium text-muted-foreground">{d}</div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7">
-          {Array.from({ length: firstDayOffset }, (_, i) => (
-            <div key={`e-${i}`} className="h-10 border-b border-r last:border-r-0" />
-          ))}
-          {Array.from({ length: daysInMonth }, (_, i) => {
-            const day = i + 1;
-            const isToday =
-              today.getDate() === day &&
-              today.getMonth() + 1 === monthNum &&
-              today.getFullYear() === year;
-            return (
-              <div
-                key={day}
-                className={`flex h-10 items-center justify-center border-b border-r text-sm last:border-r-0 ${
-                  isToday ? "bg-primary/10 font-bold text-primary" : "text-foreground"
-                }`}
-              >
-                {day}
-              </div>
-            );
-          })}
-        </div>
+      <div className="grid items-start gap-5 lg:grid-cols-2">
+      {/* Calendar + selected day (left on desktop, below focuses on phones) */}
+      <div className="order-last lg:order-first">
+        <MonthCalendar month={month} />
       </div>
 
       {/* Monthly focus areas */}
@@ -315,6 +295,7 @@ export function MonthView() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

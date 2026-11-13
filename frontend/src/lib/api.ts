@@ -104,25 +104,15 @@ export const planningApi = {
 
   getDailyTasks: (date?: string) =>
     request<DailyTask[]>(`/planning/daily-tasks${date ? `?task_date=${date}` : ""}`),
-  getOverdueTasks: () =>
-    request<DailyTask[]>("/planning/daily-tasks?overdue=true"),
+  /** Open tasks left on days before `date` (for "move to today"). */
+  getUnfinishedBefore: (date: string) =>
+    request<DailyTask[]>(`/planning/daily-tasks?unfinished_before=${date}`),
   createDailyTask: (data: Partial<DailyTask>) =>
     request<DailyTask>("/planning/daily-tasks", { method: "POST", body: JSON.stringify(data) }),
   updateDailyTask: (id: string, data: Partial<DailyTask>) =>
     request<DailyTask>(`/planning/daily-tasks/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   deleteDailyTask: (id: string) =>
     request<void>(`/planning/daily-tasks/${id}`, { method: "DELETE" }),
-
-  getNotes: (type?: string, date?: string) => {
-    const params = new URLSearchParams();
-    if (type) params.set("note_type", type);
-    if (date) params.set("note_date", date);
-    return request<PlanningNote[]>(`/planning/notes?${params}`);
-  },
-  createNote: (data: Partial<PlanningNote>) =>
-    request<PlanningNote>("/planning/notes", { method: "POST", body: JSON.stringify(data) }),
-  deleteNote: (id: string) =>
-    request<void>(`/planning/notes/${id}`, { method: "DELETE" }),
 };
 
 // ── Habits ────────────────────────────────────────────────────────────────────
@@ -191,8 +181,6 @@ export const trackingApi = {
 export const aiApi = {
   getMotivational: (useAI = true, language = "en") =>
     request<{ message: string; source: string }>(`/ai/motivational?ai=${useAI}&lang=${language}`),
-  parseTask: (text: string) =>
-    request<Partial<DailyTask>>("/ai/parse-task", { method: "POST", body: JSON.stringify({ text }) }),
   generateWeeklyReview: (language = "en") =>
     request<WeeklyAIReview>("/ai/weekly-review", { method: "POST", body: JSON.stringify({ language }) }),
   getWeeklyReviews: () =>
@@ -310,17 +298,6 @@ export interface DailyTask {
   tags?: string;
   deadline_date?: string;   // "YYYY-MM-DD"
   deadline_time?: string;   // "HH:MM:SS" from Postgres
-  created_at: string;
-}
-
-export interface PlanningNote {
-  id: string;
-  note_date?: string;
-  week_number?: number;
-  month?: number;
-  year?: number;
-  content: string;
-  note_type: string;
   created_at: string;
 }
 

@@ -7,14 +7,13 @@ from sqlalchemy import and_
 
 from app.database import get_db
 from app.dependencies import get_current_user_id
-from app.models.planning import LifeArea, YearlyGoal, MonthlyFocus, WeeklyPriority, DailyTask, PlanningNote
+from app.models.planning import LifeArea, YearlyGoal, MonthlyFocus, WeeklyPriority, DailyTask
 from app.schemas.planning import (
     LifeAreaCreate, LifeAreaUpdate, LifeAreaOut,
     YearlyGoalCreate, YearlyGoalUpdate, YearlyGoalOut,
     MonthlyFocusCreate, MonthlyFocusUpdate, MonthlyFocusOut,
     WeeklyPriorityCreate, WeeklyPriorityUpdate, WeeklyPriorityOut,
     DailyTaskCreate, DailyTaskUpdate, DailyTaskOut,
-    PlanningNoteCreate, PlanningNoteOut,
 )
 
 router = APIRouter(prefix="/planning", tags=["planning"])
@@ -258,6 +257,7 @@ def delete_weekly_priority(
 def list_daily_tasks(
     task_date: Optional[date] = Query(None),
     overdue: bool = Query(False),
+    unfinished_before: Optional[date] = Query(None),
     db: Session = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):
@@ -269,6 +269,9 @@ def list_daily_tasks(
             DailyTask.is_completed == False,
             DailyTask.deadline_date.isnot(None),
         )
+    elif unfinished_before:
+        # Open tasks left on earlier days (used for "move to today").
+        q = q.filter(DailyTask.task_date < unfinished_before, DailyTask.is_completed == False)
     elif task_date:
         q = q.filter(DailyTask.task_date == task_date)
     return q.order_by(DailyTask.deadline_date.asc().nullslast(), DailyTask.deadline_time.asc().nullslast(), DailyTask.created_at).all()
@@ -311,49 +314,6 @@ def delete_daily_task(
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):
     obj = db.query(DailyTask).filter(DailyTask.id == task_id, DailyTask.user_id == user_id).first()
-    if not obj:
-        raise HTTPException(404, "Not found")
-    obj.is_deleted = True
-    db.commit()
-
-
-# ── Planning Notes ────────────────────────────────────────────────────────────
-
-@router.get("/notes", response_model=list[PlanningNoteOut])
-def list_notes(
-    note_type: Optional[str] = Query(None),
-    note_date: Optional[date] = Query(None),
-    db: Session = Depends(get_db),
-    user_id: uuid.UUID = Depends(get_current_user_id),
-):
-    q = db.query(PlanningNote).filter(PlanningNote.user_id == user_id, PlanningNote.is_deleted == False)
-    if note_type:
-        q = q.filter(PlanningNote.note_type == note_type)
-    if note_date:
-        q = q.filter(PlanningNote.note_date == note_date)
-    return q.order_by(PlanningNote.created_at.desc()).all()
-
-
-@router.post("/notes", response_model=PlanningNoteOut, status_code=201)
-def create_note(
-    data: PlanningNoteCreate,
-    db: Session = Depends(get_db),
-    user_id: uuid.UUID = Depends(get_current_user_id),
-):
-    obj = PlanningNote(**data.model_dump(), user_id=user_id)
-    db.add(obj)
-    db.commit()
-    db.refresh(obj)
-    return obj
-
-
-@router.delete("/notes/{note_id}", status_code=204)
-def delete_note(
-    note_id: uuid.UUID,
-    db: Session = Depends(get_db),
-    user_id: uuid.UUID = Depends(get_current_user_id),
-):
-    obj = db.query(PlanningNote).filter(PlanningNote.id == note_id, PlanningNote.user_id == user_id).first()
     if not obj:
         raise HTTPException(404, "Not found")
     obj.is_deleted = True

@@ -146,6 +146,7 @@ class DailyTaskCreate(BaseModel):
 
 class DailyTaskUpdate(BaseModel):
     title: Optional[str] = None
+    task_date: Optional[date] = None
     description: Optional[str] = None
     is_completed: Optional[bool] = None
     priority: Optional[str] = None
