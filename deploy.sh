@@ -29,7 +29,12 @@ log "Source updated to $(git rev-parse --short HEAD)."
 
 # 2. Backend dependencies (no-op if unchanged)
 info "Syncing backend dependencies..."
-"$BACKEND_DIR/venv/bin/pip" install -q -r "$BACKEND_DIR/requirements.txt"
+# The venv may be created by `uv venv`, which ships without pip.
+if [[ -x "$BACKEND_DIR/venv/bin/pip" ]]; then
+  "$BACKEND_DIR/venv/bin/pip" install -q -r "$BACKEND_DIR/requirements.txt"
+else
+  uv pip install -q --python "$BACKEND_DIR/venv/bin/python" -r "$BACKEND_DIR/requirements.txt"
+fi
 
 # 3. Frontend dependencies (no-op if unchanged)
 info "Syncing frontend dependencies..."
