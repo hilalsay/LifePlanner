@@ -1,20 +1,28 @@
 import uuid
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, field_validator
+
+def _normalize_email(v: str) -> str:
+    return v.strip().lower()
+
 
 class RegisterRequest(BaseModel):
     email: EmailStr
-    password: str
-    display_name: Optional[str] = None
+    password: str = Field(max_length=128)
+    display_name: Optional[str] = Field(None, max_length=100)
+
+    _email = field_validator("email")(_normalize_email)
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(max_length=128)
+
+    _email = field_validator("email")(_normalize_email)
 
 class UserUpdate(BaseModel):
-    display_name: Optional[str] = None
-    avatar_url: Optional[str] = None
+    display_name: Optional[str] = Field(None, max_length=100)
+    avatar_url: Optional[str] = Field(None, max_length=500)
 
 class UserOut(BaseModel):
     id: uuid.UUID

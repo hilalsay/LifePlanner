@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     github_client_id: str = ""
     github_client_secret: str = ""
+    environment: str = "development"
     # URLs
     frontend_url: str = "http://localhost:5173"
     backend_url: str = "http://localhost:8000"
