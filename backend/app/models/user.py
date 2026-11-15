@@ -16,5 +16,7 @@ class User(Base):
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     display_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Admin/debug flag: may use the external LLM API (see settings.external_ai_*)
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
