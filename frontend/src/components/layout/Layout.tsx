@@ -14,7 +14,8 @@ const TITLE_PATHS = new Set([
 export function Layout() {
   const { pathname } = useLocation();
   const { t } = useI18n();
-  const title = TITLE_PATHS.has(pathname) ? t(`title.${pathname}`) : t("title.default");
+  const title = pathname === "/admin" ? "Admin"
+    : TITLE_PATHS.has(pathname) ? t(`title.${pathname}`) : t("title.default");
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 

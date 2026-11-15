@@ -5,6 +5,7 @@ import httpx
 from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, UploadFile, File
 from fastapi.responses import RedirectResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -81,8 +82,9 @@ def _get_or_create_oauth_user(
     user = db.query(User).filter(User.provider == provider, User.provider_id == provider_id).first()
     if user:
         return user
+    email = email.strip().lower()
     # check if email already exists (different provider)
-    user = db.query(User).filter(User.email == email).first()
+    user = db.query(User).filter(func.lower(User.email) == email).first()
     if user:
         # link existing account
         user.provider_id = provider_id
@@ -105,7 +107,7 @@ def _get_or_create_oauth_user(
 
 @router.post("/register", response_model=UserOut)
 def register(data: RegisterRequest, response: Response, db: Session = Depends(get_db)):
-    if db.query(User).filter(User.email == data.email).first():
+    if db.query(User).filter(func.lower(User.email) == data.email).first():
         raise HTTPException(400, "Email already registered")
     if len(data.password) < 8:
         raise HTTPException(400, "Password must be at least 8 characters")
@@ -124,7 +126,10 @@ def register(data: RegisterRequest, response: Response, db: Session = Depends(ge
 
 @router.post("/login", response_model=UserOut)
 def login(data: LoginRequest, response: Response, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == data.email).first()
+    user = (
+        db.query(User).filter(User.email == data.email).first()
+        or db.query(User).filter(func.lower(User.email) == data.email).first()
+    )
     if not user or not user.password_hash or not verify_password(data.password, user.password_hash):
         raise HTTPException(401, "Invalid email or password")
     if not user.is_active:
@@ -178,6 +183,9 @@ def update_me(
         user.display_name = dn or None
     if "avatar_url" in updates:
         au = (updates["avatar_url"] or "").strip()
+        own_upload = au.startswith(f"/api/v1/uploads/avatars/{user.id}-") and ".." not in au
+        if au and not own_upload and not au.startswith("https://"):
+            raise HTTPException(400, "Invalid avatar URL")
         user.avatar_url = au or None
     db.commit()
     db.refresh(user)
@@ -204,15 +212,11 @@ async def upload_avatar(
     if not user:
         raise HTTPException(401, "User not found")
 
-    if not (file.content_type or "").startswith("image/"):
-        raise HTTPException(400, "File must be an image")
-
-    ext_map = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp", "image/gif": ".gif"}
-    ext = ext_map.get(file.content_type, ".png")
-
-    data = await file.read()
+    data = await file.read(5 * 1024 * 1024 + 1)
     if len(data) > 5 * 1024 * 1024:  # 5 MB cap
         raise HTTPException(400, "Image must be under 5 MB")
+    from app.security import sniff_image
+    ext = sniff_image(data)
 
     avatars_dir = Path(__file__).resolve().parent.parent.parent / "uploads" / "avatars"
     avatars_dir.mkdir(parents=True, exist_ok=True)
@@ -271,8 +275,8 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
         token = await oauth.google.authorize_access_token(request)
         user_info = token.get("userinfo") or {}
         email = user_info.get("email")
-        if not email:
-            raise HTTPException(400, "No email from Google")
+        if not email or not user_info.get("email_verified"):
+            raise HTTPException(400, "No verified email from Google")
         user = _get_or_create_oauth_user(
             db,
             provider="google",

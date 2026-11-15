@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 
 class ChatSuggestion(BaseModel):
@@ -28,12 +28,12 @@ class ChatSuggestion(BaseModel):
 
 
 class ChatAttachment(BaseModel):
-    kind: str
-    title: str
-    priority: Optional[str] = None
-    deadline: Optional[str] = None
+    kind: str = Field(max_length=20)
+    title: str = Field(max_length=300)
+    priority: Optional[str] = Field(None, max_length=20)
+    deadline: Optional[str] = Field(None, max_length=40)
     completed: Optional[bool] = None
-    description: Optional[str] = None
+    description: Optional[str] = Field(None, max_length=2000)
 
 
 class ChatMessageOut(BaseModel):
@@ -62,10 +62,10 @@ class ConversationDetailOut(ConversationOut):
 
 
 class ChatRequest(BaseModel):
-    content: str = ""
+    content: str = Field("", max_length=8000)
     conversation_id: Optional[uuid.UUID] = None
-    attachments: list[ChatAttachment] = []
-    language: str = "en"
+    attachments: list[ChatAttachment] = Field(default_factory=list, max_length=20)
+    language: str = Field("en", max_length=10)
 
 
 class ChatResponse(BaseModel):

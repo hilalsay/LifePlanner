@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Settings, LogOut } from "lucide-react";
+import { Settings, LogOut, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/LanguageContext";
@@ -50,6 +50,12 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           <Settings className="h-[18px] w-[18px] shrink-0" aria-hidden />
           {t("nav.settings")}
         </NavLink>
+        {user?.is_admin && (
+          <NavLink to="/admin" onClick={onNavigate} className={linkClass}>
+            <ShieldCheck className="h-[18px] w-[18px] shrink-0" aria-hidden />
+            Admin
+          </NavLink>
+        )}
         {user && (
           <div className="flex items-center gap-3 rounded-lg px-3 py-2">
             {user.avatar_url ? (

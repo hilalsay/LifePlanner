@@ -15,6 +15,7 @@ import { VisionBoard } from "@/pages/VisionBoard";
 import { HabitTracker } from "@/pages/HabitTracker";
 import { ReadingPage } from "@/pages/ReadingPage";
 import { SettingsPage } from "@/pages/SettingsPage";
+import { AdminPage } from "@/pages/AdminPage";
 
 export default function App() {
   return (
@@ -40,6 +41,7 @@ export default function App() {
               <Route path="/overview" element={<Navigate to="/month" replace />} />
               <Route path="/tracking" element={<Navigate to="/reading" replace />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/admin" element={<AdminPage />} />
             </Route>
           </Route>
         </Routes>

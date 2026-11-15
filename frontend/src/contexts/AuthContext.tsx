@@ -14,6 +14,7 @@ export interface User {
   display_name?: string;
   avatar_url?: string;
   provider: string;
+  is_admin?: boolean;
   created_at: string;
 }
 
