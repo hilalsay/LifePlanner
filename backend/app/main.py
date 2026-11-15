@@ -16,14 +16,13 @@ UPLOAD_DIR = Path(__file__).resolve().parent.parent / "uploads"
 
 app.add_middleware(SessionMiddleware, secret_key=settings.session_secret_key)
 
+_cors_origins = ["http://localhost:5173", "http://localhost:3000"]
+if settings.frontend_url and settings.frontend_url not in _cors_origins:
+    _cors_origins.append(settings.frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://10.255.255.254:5173",
-        "http://172.20.162.215:5173",
-    ],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -45,6 +45,10 @@ const KIND_META: Record<SuggestionKind, { icon: typeof Calendar; className: stri
   task: { icon: CheckSquare, className: "text-emerald-500" },
 };
 
+// Fallback for non-actionable / unknown kinds (e.g. "insight") the model may
+// emit. Without this, indexing KIND_META returns undefined and crashes render.
+const KIND_FALLBACK = { icon: Sparkles, className: "text-muted-foreground" };
+
 const ATTACH_ICON: Record<DragItemKind, typeof Calendar> = {
   monthly: Calendar,
   weekly: CalendarRange,
@@ -388,7 +392,9 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
         <div className="flex h-14 items-center justify-between border-b px-4">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            <span className="font-semibold tracking-tight">{t("assistant.title")}</span>
+            <span className="tracking-tight text-[15px]">
+              <span className="font-extrabold">AI</span><span className="font-medium">zen</span>
+            </span>
           </div>
           <div className="flex items-center gap-0.5">
             <Button variant="ghost" size="icon" onClick={startNewChat} title={t("assistant.newChat")}>
@@ -441,7 +447,7 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
                 onClose={() => setShowPicker(false)}
               />
             ) : (
-              <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-4">
+              <div ref={scrollRef} className="flex-1 min-h-0 space-y-4 overflow-y-auto p-4">
                 {messages.map((m) => (
                   <MessageBubble
                     key={m.id}
@@ -455,8 +461,8 @@ export function AssistantPanel({ open, onClose }: AssistantPanelProps) {
               </div>
             )}
 
-            {/* Composer — extra bottom padding clears the mobile bottom nav (h-16) */}
-            <div className="border-t px-3 pt-3 pb-20 md:pb-3">
+            {/* Composer — shrink-0 keeps it pinned; extra bottom padding clears the mobile bottom nav (h-16) */}
+            <div className="shrink-0 border-t px-3 pt-3 pb-20 md:pb-3">
               {attachments.length > 0 && (
                 <div className="mb-2 flex flex-wrap gap-1.5">
                   {attachments.map((a, i) => (
@@ -601,14 +607,17 @@ function SuggestionCard({
   onAdd: () => void;
 }) {
   const { t, lang } = useI18n();
-  const meta = KIND_META[suggestion.kind];
+  // Only the four planner kinds are actionable (persist() has a case for each);
+  // others (e.g. "insight") render as read-only cards with no Add button.
+  const actionable = suggestion.kind in KIND_META;
+  const meta = KIND_META[suggestion.kind] ?? KIND_FALLBACK;
   const Icon = meta.icon;
   return (
     <div className="flex items-start gap-3 rounded-lg border bg-background p-3">
       <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", meta.className)} />
       <div className="min-w-0 flex-1">
         <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-          {t(`kind.${suggestion.kind}`)}
+          {actionable ? t(`kind.${suggestion.kind}`) : suggestion.kind.replace(/_/g, " ")}
           {suggestion.date && (
             <span className="ml-1.5 normal-case text-primary">
               · {format(parseISO(suggestion.date), "EEE, MMM d", { locale: dateLocale(lang) })}
@@ -620,27 +629,29 @@ function SuggestionCard({
           <div className="mt-0.5 text-xs text-muted-foreground">{suggestion.description}</div>
         )}
       </div>
-      <Button
-        size="sm"
-        variant={added ? "secondary" : "default"}
-        onClick={onAdd}
-        disabled={added || saving}
-        className="shrink-0"
-      >
-        {added ? (
-          <>
-            <Check className="h-3.5 w-3.5" /> {t("suggestion.added")}
-          </>
-        ) : saving ? (
-          <>
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("suggestion.adding")}
-          </>
-        ) : (
-          <>
-            <Plus className="h-3.5 w-3.5" /> {t("suggestion.add")}
-          </>
-        )}
-      </Button>
+      {actionable && (
+        <Button
+          size="sm"
+          variant={added ? "secondary" : "default"}
+          onClick={onAdd}
+          disabled={added || saving}
+          className="shrink-0"
+        >
+          {added ? (
+            <>
+              <Check className="h-3.5 w-3.5" /> {t("suggestion.added")}
+            </>
+          ) : saving ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("suggestion.adding")}
+            </>
+          ) : (
+            <>
+              <Plus className="h-3.5 w-3.5" /> {t("suggestion.add")}
+            </>
+          )}
+        </Button>
+      )}
     </div>
   );
 }
@@ -653,7 +664,7 @@ function PlanTab({ plan }: { plan: Suggestion[] }) {
     .filter((g) => g.items.length > 0);
 
   return (
-    <div className="flex-1 space-y-5 overflow-y-auto px-4 pt-4 pb-20 md:pb-4">
+    <div className="flex-1 min-h-0 space-y-5 overflow-y-auto px-4 pt-4 pb-20 md:pb-4">
       {plan.length === 0 ? (
         <p className="pt-8 text-center text-sm text-muted-foreground">
           {t("assistant.planEmpty")}

@@ -1,11 +1,11 @@
 import { FormEvent, useState } from "react";
 import { Link } from "react-router-dom";
-import { Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/LanguageContext";
+import { OAUTH_ENABLED, GITHUB_ENABLED } from "@/lib/features";
 
 export function RegisterPage() {
   const { register } = useAuth();
@@ -28,9 +28,11 @@ export function RegisterPage() {
     setIsSubmitting(true);
     try {
       await register(email, password, displayName || undefined);
-      window.location.href = "/";
+      window.location.href = "/today";
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("auth.registrationFailed"));
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "Email already registered") setError(t("auth.emailTaken"));
+      else setError(t("auth.registrationFailed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -44,7 +46,7 @@ export function RegisterPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 pb-4">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <Sparkles className="h-6 w-6 text-primary" />
+            <img src="/android-chrome-192x192.png" alt="" className="h-6 w-6 rounded" />
             <span className="text-xl font-bold tracking-tight">Life Planner</span>
           </div>
           <CardTitle className="text-center text-2xl">{t("auth.createAccount")}</CardTitle>
@@ -114,6 +116,8 @@ export function RegisterPage() {
             </Button>
           </form>
 
+          {OAUTH_ENABLED && (
+          <>
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t" />
@@ -123,7 +127,7 @@ export function RegisterPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className={GITHUB_ENABLED ? "grid grid-cols-2 gap-3" : "grid grid-cols-1 gap-3"}>
             <Button
               type="button"
               variant="outline"
@@ -151,6 +155,7 @@ export function RegisterPage() {
               Google
             </Button>
 
+            {GITHUB_ENABLED && (
             <Button
               type="button"
               variant="outline"
@@ -162,7 +167,10 @@ export function RegisterPage() {
               </svg>
               GitHub
             </Button>
+            )}
           </div>
+          </>
+          )}
 
           <p className="text-center text-sm text-muted-foreground">
             {t("auth.alreadyHaveAccount")}{" "}

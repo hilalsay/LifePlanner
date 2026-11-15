@@ -29,6 +29,7 @@ async def _ollama_generate(system: Optional[str], prompt: str) -> Optional[str]:
     headers = {"Host": settings.ollama_host_header} if settings.ollama_host_header else {}
     try:
         async with httpx.AsyncClient(timeout=240) as client:
+        async with httpx.AsyncClient(timeout=120) as client:
             resp = await client.post(f"{base}/api/chat", json=payload, headers=headers)
             resp.raise_for_status()
             return (resp.json().get("message", {}).get("content") or "").strip() or None
@@ -50,6 +51,15 @@ async def _gemini_generate(system: Optional[str], prompt: str) -> Optional[str]:
     except Exception:
         return None
 
+
+async def _generate_text(system: Optional[str], prompt: str) -> Optional[str]:
+    """Provider-aware plain-text generation (mirrors the chat provider dispatch)."""
+    provider = (settings.ai_provider or "gemini").lower()
+    if provider == "ollama" and settings.ollama_base_url:
+        text = await _ollama_generate(system, prompt)
+        if text:
+            return text
+    return await _gemini_generate(system, prompt)
 
 async def _generate_text(system: Optional[str], prompt: str) -> Optional[str]:
     """Provider-aware plain-text generation (mirrors the chat provider dispatch)."""

@@ -1,11 +1,11 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { useI18n } from "@/contexts/LanguageContext";
+import { OAUTH_ENABLED, GITHUB_ENABLED } from "@/lib/features";
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -30,9 +30,11 @@ export function LoginPage() {
     setIsSubmitting(true);
     try {
       await login(email, password);
-      window.location.href = "/";
+      window.location.href = "/today";
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("auth.signInFailed"));
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "Invalid email or password") setError(t("auth.invalidCredentials"));
+      else setError(t("auth.signInFailed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -46,7 +48,7 @@ export function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 pb-4">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <Sparkles className="h-6 w-6 text-primary" />
+            <img src="/android-chrome-192x192.png" alt="" className="h-6 w-6 rounded" />
             <span className="text-xl font-bold tracking-tight">Life Planner</span>
           </div>
           <CardTitle className="text-center text-2xl">{t("auth.signIn")}</CardTitle>
@@ -100,6 +102,8 @@ export function LoginPage() {
             </Button>
           </form>
 
+          {OAUTH_ENABLED && (
+          <>
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t" />
@@ -109,7 +113,7 @@ export function LoginPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className={GITHUB_ENABLED ? "grid grid-cols-2 gap-3" : "grid grid-cols-1 gap-3"}>
             <Button
               type="button"
               variant="outline"
@@ -137,6 +141,7 @@ export function LoginPage() {
               Google
             </Button>
 
+            {GITHUB_ENABLED && (
             <Button
               type="button"
               variant="outline"
@@ -148,7 +153,10 @@ export function LoginPage() {
               </svg>
               GitHub
             </Button>
+            )}
           </div>
+          </>
+          )}
 
           <p className="text-center text-sm text-muted-foreground">
             {t("auth.noAccount")}{" "}

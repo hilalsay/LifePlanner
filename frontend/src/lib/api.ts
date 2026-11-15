@@ -44,8 +44,13 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error("Session expired");
   }
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(err || `HTTP ${res.status}`);
+    const text = await res.text();
+    let message = text;
+    try {
+      const data = JSON.parse(text);
+      if (typeof data.detail === "string") message = data.detail;
+    } catch { /* not JSON — use raw text */ }
+    throw new Error(message || `HTTP ${res.status}`);
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
@@ -184,12 +189,12 @@ export const trackingApi = {
 // ── AI ────────────────────────────────────────────────────────────────────────
 
 export const aiApi = {
-  getMotivational: (useAI = true) =>
-    request<{ message: string; source: string }>(`/ai/motivational?ai=${useAI}`),
+  getMotivational: (useAI = true, language = "en") =>
+    request<{ message: string; source: string }>(`/ai/motivational?ai=${useAI}&lang=${language}`),
   parseTask: (text: string) =>
     request<Partial<DailyTask>>("/ai/parse-task", { method: "POST", body: JSON.stringify({ text }) }),
-  generateWeeklyReview: () =>
-    request<WeeklyAIReview>("/ai/weekly-review", { method: "POST", body: JSON.stringify({}) }),
+  generateWeeklyReview: (language = "en") =>
+    request<WeeklyAIReview>("/ai/weekly-review", { method: "POST", body: JSON.stringify({ language }) }),
   getWeeklyReviews: () =>
     request<WeeklyAIReview[]>("/ai/weekly-reviews"),
   chat: (content: string, conversationId?: string, attachments?: DragItem[], language?: string) =>
@@ -376,7 +381,27 @@ export interface BookEntry {
   end_date?: string;
   rating?: number;
   notes?: string;
+  cover_url?: string;
+  review?: string;
   created_at: string;
+}
+
+export interface GoogleBookResult {
+  title: string;
+  author?: string;
+  cover_url?: string;
+}
+
+// Search goes through our backend, which holds the Google Books API key and
+// normalizes covers (https + higher resolution) server-side.
+export async function searchGoogleBooks(query: string): Promise<GoogleBookResult[]> {
+  return request<GoogleBookResult[]>(`/tracking/books/search?q=${encodeURIComponent(query)}`);
+}
+
+// Fetch the single best-matching cover for a title (used while editing a book).
+export async function fetchBookCover(title: string): Promise<string | undefined> {
+  const [best] = await searchGoogleBooks(title);
+  return best?.cover_url;
 }
 
 export interface WeeklyAIReview {

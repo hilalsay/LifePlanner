@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { MobileDrawer } from "./MobileDrawer";
@@ -15,6 +15,15 @@ export function Layout() {
   const title = TITLE_PATHS.has(pathname) ? t(`title.${pathname}`) : t("title.default");
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // On mobile AIzen covers the whole screen, so close it when the route changes
+  // (e.g. tapping a bottom-nav tab). On desktop the panel sits beside the content,
+  // so leave it open there.
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 767px)").matches) {
+      setAssistantOpen(false);
+    }
+  }, [pathname]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
