@@ -389,3 +389,45 @@ export interface WeeklyAIReview {
   model_used: string;
   created_at: string;
 }
+
+// ── Admin ─────────────────────────────────────────────────────────────────────
+
+export interface AdminOverview {
+  days: number;
+  tracking_since: string | null;
+  totals: { users: number; new_users: number; active_1d: number; active_7d: number; active_30d: number; never_used: number };
+  series: { day: string; signups: number; active_users: number; actions: number }[];
+  features: { feature: string; users: number; views: number; actions: number }[];
+  adoption: { key: string; users: number; users_recent: number; items: number; items_recent: number }[];
+}
+
+export interface AdminUserRow {
+  id: string;
+  email: string;
+  display_name: string | null;
+  provider: string;
+  is_admin: boolean;
+  is_active: boolean;
+  created_at: string;
+  last_seen_at: string | null;
+  last_active_at: string | null;
+  active_days: number;
+  views: number;
+  actions: number;
+  top_feature: string | null;
+  content: Record<string, number>;
+  total_items: number;
+}
+
+export interface AdminUserDetail {
+  user: Pick<AdminUserRow, "id" | "email" | "display_name" | "provider" | "is_admin" | "created_at" | "last_seen_at" | "last_active_at">;
+  content: { key: string; count: number; recent: number; last_at: string | null }[];
+  features: { feature: string; active_days: number; views: number; actions: number; last_day: string }[];
+  series: { day: string; views: number; actions: number }[];
+}
+
+export const adminApi = {
+  overview: (days: number) => request<AdminOverview>(`/admin/overview?days=${days}`),
+  users: (days: number) => request<AdminUserRow[]>(`/admin/users?days=${days}`),
+  user: (id: string, days: number) => request<AdminUserDetail>(`/admin/users/${id}?days=${days}`),
+};

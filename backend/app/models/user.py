@@ -18,5 +18,6 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     # Admin/debug flag: may use the external LLM API (see settings.external_ai_*)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    last_seen_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

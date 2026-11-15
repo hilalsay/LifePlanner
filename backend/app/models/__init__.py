@@ -4,6 +4,7 @@ from app.models.habits import Habit, HabitEntry
 from app.models.tracking import MoodEntry, HealthEntry, BookEntry, WeeklyAIReview
 from app.models.user import User
 from app.models.chat import Conversation, ChatMessage
+from app.models.activity import UserActivity
 
 __all__ = [
     "Base",
@@ -23,4 +24,5 @@ __all__ = [
     "User",
     "Conversation",
     "ChatMessage",
+    "UserActivity",
 ]
